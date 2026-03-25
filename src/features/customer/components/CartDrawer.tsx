@@ -38,14 +38,14 @@ export default function CartDrawer() {
   return (
     <div
       className={[
-        "fixed inset-0 z-40 transition-opacity",
+        "fixed inset-0 z-40 transition-opacity duration-300 ease-out",
         isOpen ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
       aria-hidden={!isOpen}
     >
       <div
         className={[
-          "absolute inset-0 bg-black/30 transition-opacity duration-200",
+          "absolute inset-0 bg-black/30 transition-opacity duration-300 ease-out",
           isOpen ? "opacity-100" : "opacity-0",
         ].join(" ")}
         onClick={close}
@@ -55,7 +55,7 @@ export default function CartDrawer() {
         className={[
           "absolute right-0 top-0 h-dvh w-[92vw] sm:w-full max-w-md",
           "bg-white md:rounded-l-3xl shadow-2xl border-l border-neutral-200",
-          "transition-transform duration-250 ease-out",
+          "transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
       >

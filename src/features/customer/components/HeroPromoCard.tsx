@@ -1,3 +1,5 @@
+import { Coffee } from "lucide-react";
+
 type HeroPromoCardProps = {
   promoText: string;
   subtitle?: string;
@@ -14,7 +16,7 @@ export default function HeroPromoCard({
 
       <div className="relative">
         <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
-          <span className="inline-block h-2 w-2 rounded-full bg-white shadow" />
+          <Coffee className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
           <span>Warcoop Deal</span>
         </div>
 
