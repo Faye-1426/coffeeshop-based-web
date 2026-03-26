@@ -4,15 +4,15 @@ import WarcoopMenuPage from "./features/customer/WarcoopMenuPage";
 import CheckoutPage from "./features/customer/CheckoutPage";
 import OrderSuccessPage from "./features/customer/OrderSuccessPage";
 import PosLayout from "./components/layout/PosLayout";
-import DashboardPage from "./features/dashboard/pages/DashboardPage";
-import CategoriesPage from "./features/categories/pages/CategoriesPage";
-import ProductsPage from "./features/products/pages/ProductsPage";
-import OrdersPage from "./features/orders/pages/OrdersPage";
-import TransactionsPage from "./features/transactions/pages/TransactionsPage";
-import OutstandingPage from "./features/outstanding/pages/OutstandingPage";
-import AccountPage from "./features/account/pages/AccountPage";
-import LoginPage from "./features/auth/pages/LoginPage";
-import SignupPage from "./features/auth/pages/SignupPage";
+import Dashboard from "./features/dashboard/Dashboard";
+import Category from "./features/categories/Category";
+import Product from "./features/products/Product";
+import Order from "./features/orders/Order";
+import Transaction from "./features/transactions/Transaction";
+import Outstanding from "./features/outstanding/Outstanding";
+import Account from "./features/account/Account";
+import Login from "./features/auth/Login";
+import Signup from "./features/auth/Signup";
 import CartShell from "./CartShell";
 
 function CustomerShell({ children }: { children: ReactNode }) {
@@ -23,17 +23,17 @@ export default function App() {
   return (
     <div className="min-h-dvh bg-neutral-50 text-neutral-900">
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
         <Route path="/pos" element={<PosLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="categories" element={<CategoriesPage />} />
-          <Route path="products" element={<ProductsPage />} />
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="transactions" element={<TransactionsPage />} />
-          <Route path="outstanding" element={<OutstandingPage />} />
-          <Route path="account" element={<AccountPage />} />
+          <Route index element={<Dashboard />} />
+          <Route path="categories" element={<Category />} />
+          <Route path="products" element={<Product />} />
+          <Route path="orders" element={<Order />} />
+          <Route path="transactions" element={<Transaction />} />
+          <Route path="outstanding" element={<Outstanding />} />
+          <Route path="account" element={<Account />} />
         </Route>
 
         <Route
