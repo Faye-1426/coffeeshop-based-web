@@ -1,6 +1,7 @@
 import Card from "../../../components/ui/Card";
 import Badge from "../../../components/ui/Badge";
 import { formatIDR } from "../../../lib/formatCurrency";
+import { formatTxLabel } from "../../../lib/formatPosIds";
 import type { PosTransaction } from "../../../types/pos";
 
 export default function RecentTransactions({
@@ -20,7 +21,9 @@ export default function RecentTransactions({
             className="flex items-center justify-between gap-2 text-sm border-b border-neutral-100 pb-3 last:border-0 last:pb-0"
           >
             <div className="min-w-0">
-              <div className="font-bold text-neutral-900 truncate">{tx.id}</div>
+              <div className="font-bold text-neutral-900 truncate">
+                {formatTxLabel(tx.id)}
+              </div>
               <div className="text-xs text-neutral-500">
                 {tx.method.toUpperCase()} · {tx.createdAt.slice(0, 16)}
               </div>

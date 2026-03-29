@@ -1,12 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronDown, LogIn, LogOut, UserRound } from "lucide-react";
-import { POS_DEMO_TENANT_NAME, POS_DEMO_USER_NAME } from "../../lib/posDemoSession";
+import {
+  POS_DEMO_TENANT_NAME,
+  POS_DEMO_USER_NAME,
+} from "../../lib/posDemoSession";
+import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
+import { resetPosStoresAfterSignOut } from "../../lib/posStoresReset";
+import { useTenant } from "../../lib/supabase/TenantContext";
 
 export default function UserMenuDropdown() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const {
+    isSupabase,
+    user,
+    profile,
+    tenantName,
+    session,
+    refreshProfile,
+  } = useTenant();
+
+  const displayTenant =
+    isSupabase && session
+      ? tenantName ?? "—"
+      : POS_DEMO_TENANT_NAME;
+  const displayUser =
+    isSupabase && session
+      ? profile?.full_name || user?.email || "User"
+      : POS_DEMO_USER_NAME;
 
   useEffect(() => {
     if (!open) return;
@@ -23,6 +46,28 @@ export default function UserMenuDropdown() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  const onLogout = async () => {
+    setOpen(false);
+    try {
+      if (isSupabaseConfigured()) {
+        const sb = getSupabase();
+        try {
+          await sb?.auth.signOut({ scope: "local" });
+        } catch (e) {
+          console.warn("[Warcoop] signOut:", e);
+        }
+        resetPosStoresAfterSignOut();
+        try {
+          await refreshProfile();
+        } catch (e) {
+          console.warn("[Warcoop] refreshProfile after signOut:", e);
+        }
+      }
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  };
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -58,14 +103,14 @@ export default function UserMenuDropdown() {
             <div className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">
               Tenant
             </div>
-            <div className="mt-1 text-sm font-extrabold text-neutral-900 leading-snug">
-              {POS_DEMO_TENANT_NAME}
+            <div className="mt-1 text-sm font-extrabold text-neutral-900 leading-snug break-words">
+              {displayTenant}
             </div>
             <div className="mt-3 text-[11px] font-bold uppercase tracking-wide text-neutral-500">
               User
             </div>
-            <div className="mt-1 text-sm font-bold text-neutral-800">
-              {POS_DEMO_USER_NAME}
+            <div className="mt-1 text-sm font-bold text-neutral-800 break-words">
+              {displayUser}
             </div>
           </div>
 
@@ -74,26 +119,30 @@ export default function UserMenuDropdown() {
               type="button"
               role="menuitem"
               className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-neutral-800 transition hover:bg-neutral-100"
-              onClick={() => {
-                setOpen(false);
-                navigate("/login", { replace: true });
-              }}
+              onClick={() => void onLogout()}
             >
-              <LogOut className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+              <LogOut
+                className="h-4 w-4 shrink-0 text-neutral-500"
+                aria-hidden
+              />
               Logout
             </button>
-            <Link
-              to="/login"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50"
-            >
-              <LogIn className="h-4 w-4 shrink-0" aria-hidden />
-              Log in
-            </Link>
-            <p className="px-2 pt-1 text-[10px] text-neutral-500 text-center">
-              Tombol login tetap ditampilkan untuk alur demo.
-            </p>
+            {!isSupabase || !session ? (
+              <>
+                <Link
+                  to="/login"
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50"
+                >
+                  <LogIn className="h-4 w-4 shrink-0" aria-hidden />
+                  Log in
+                </Link>
+                <p className="px-2 pt-1 text-[10px] text-neutral-500 text-center">
+                  Tombol login tetap ditampilkan untuk alur demo.
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

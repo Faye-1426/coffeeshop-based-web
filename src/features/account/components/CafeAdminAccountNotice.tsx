@@ -4,7 +4,11 @@ import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
 import { usePosRole } from "../../../components/layout/usePosRole";
 
-export default function CafeAdminAccountNotice() {
+export default function CafeAdminAccountNotice({
+  liveMode = false,
+}: {
+  liveMode?: boolean;
+}) {
   const { setRole } = usePosRole();
   const navigate = useNavigate();
 
@@ -13,7 +17,8 @@ export default function CafeAdminAccountNotice() {
       <div>
         <h1 className="text-xl font-extrabold text-neutral-900">Account</h1>
         <p className="mt-1 text-sm text-neutral-600">
-          Ringkasan untuk admin outlet (bukan halaman Super Administrator).
+          Ringkasan untuk admin outlet
+          {liveMode ? " (terhubung Supabase)" : ""}.
         </p>
       </div>
 
@@ -26,15 +31,22 @@ export default function CafeAdminAccountNotice() {
             <p>
               Sebagai <strong>admin outlet</strong>, data tenant dan user Anda
               tampil di menu <strong>ikon pengguna</strong> di kanan atas
-              header. Dari situ Anda dapat <strong>Logout</strong> atau membuka
-              halaman <strong>Log in</strong> untuk demo.
+              header. Dari situ Anda dapat <strong>Logout</strong>.
             </p>
-            <p className="mt-3">
-              Isi halaman <strong>Super Administrator</strong> (multi-tenant,
-              hak akses tinggi) disembunyikan untuk peran ini. Item menu
-              <span className="font-bold text-neutral-900"> Account </span>
-              di navigasi tetap ada untuk pengembangan selanjutnya.
-            </p>
+            {!liveMode ? (
+              <p className="mt-3">
+                Isi halaman <strong>Super Administrator</strong> disembunyikan
+                untuk peran ini. Item menu
+                <span className="font-bold text-neutral-900"> Account </span>
+                di navigasi tetap ada untuk pengembangan selanjutnya.
+              </p>
+            ) : (
+              <p className="mt-3">
+                Peran dan <code className="text-xs">tenant_id</code> Anda
+                dikelola di database (lihat{" "}
+                <code className="text-xs">supabase/README.md</code>).
+              </p>
+            )}
           </div>
         </div>
 
@@ -51,18 +63,20 @@ export default function CafeAdminAccountNotice() {
           </Button>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/90 p-4">
-          <div className="text-xs font-extrabold uppercase tracking-wide text-neutral-500">
-            Pengembangan
+        {!liveMode ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/90 p-4">
+            <div className="text-xs font-extrabold uppercase tracking-wide text-neutral-500">
+              Pengembangan
+            </div>
+            <p className="mt-2 text-sm text-neutral-600">
+              Aktifkan tampilan Super Administrator untuk mengedit konten
+              halaman /pos/account yang lengkap.
+            </p>
+            <Button className="mt-3" onClick={() => setRole("super")}>
+              Buka mode Super Admin
+            </Button>
           </div>
-          <p className="mt-2 text-sm text-neutral-600">
-            Aktifkan tampilan Super Administrator untuk mengedit konten halaman
-            /pos/account yang lengkap.
-          </p>
-          <Button className="mt-3" onClick={() => setRole("super")}>
-            Buka mode Super Admin
-          </Button>
-        </div>
+        ) : null}
       </Card>
     </div>
   );
