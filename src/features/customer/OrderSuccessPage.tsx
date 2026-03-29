@@ -1,9 +1,17 @@
 import { useEffect } from "react";
 import confetti from "canvas-confetti";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+
+type LocationState = {
+  orderId?: string;
+  live?: boolean;
+};
 
 export default function OrderSuccessPage() {
+  const { storeKey } = useParams<{ storeKey: string }>();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const { orderId, live } = (state ?? {}) as LocationState;
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -19,6 +27,8 @@ export default function OrderSuccessPage() {
     return () => window.clearTimeout(t);
   }, []);
 
+  const base = storeKey ? `/${storeKey}` : "/";
+
   return (
     <div className="max-w-lg mx-auto text-center pt-8 pb-12">
       <div className="rounded-3xl border border-neutral-200 bg-white/80 p-8 sm:p-10 shadow-sm">
@@ -29,12 +39,13 @@ export default function OrderSuccessPage() {
           Order placed!
         </h1>
         <p className="mt-3 text-sm text-neutral-600">
-          Thank you for ordering at Warcoop. This is a demo — no payment was
-          processed.
+          {live && orderId
+            ? `Thank you. Your order reference: ${orderId}`
+            : "Thank you — demo mode (no order saved to the server)."}
         </p>
         <button
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(base)}
           className="mt-8 w-full rounded-full bg-red-600 text-white py-3.5 text-sm font-extrabold shadow hover:bg-red-700 transition"
         >
           Back to menu

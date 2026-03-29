@@ -6,6 +6,9 @@ import type {
 } from "../types";
 
 type CartState = {
+  /** URL segment `:storeKey` (e.g. `warkop-store`); switching clears cart. */
+  scopeStoreKey: string | null;
+  setScopeStoreKey: (storeKey: string) => void;
   isOpen: boolean;
   items: CartItem[];
   open: () => void;
@@ -54,6 +57,13 @@ export function getUnitPrice(product: MenuProduct, selection: ProductVariantSele
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
+  scopeStoreKey: null,
+  setScopeStoreKey: (storeKey: string) =>
+    set((state) => {
+      if (state.scopeStoreKey === storeKey) return state;
+      return { scopeStoreKey: storeKey, items: [], isOpen: false };
+    }),
+
   isOpen: false,
   items: [],
 
