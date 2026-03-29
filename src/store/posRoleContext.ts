@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { PosAppRole } from "../../lib/posDemoSession";
+import type { PosAppRole } from "../lib/posDemoSession";
 
 export type PosRoleContextValue = {
   role: PosAppRole;

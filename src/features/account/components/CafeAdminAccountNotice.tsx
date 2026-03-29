@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
-import { usePosRole } from "../../../components/layout/usePosRole";
+import { usePosRole } from "../../../hooks/usePosRole";
 import OutletSubscriptionKeySection from "./OutletSubscriptionKeySection";
 import TenantOutletAccountSections from "./TenantOutletAccountSections";
 

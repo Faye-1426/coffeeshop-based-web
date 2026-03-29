@@ -3,8 +3,8 @@ import {
   readPosRole,
   writePosRole,
   type PosAppRole,
-} from "../../lib/posDemoSession";
-import { PosRoleContext } from "./posRoleContextBase";
+} from "../lib/posDemoSession";
+import { PosRoleContext } from "./posRoleContext";
 
 export type { PosAppRole };
 

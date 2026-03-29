@@ -4,7 +4,7 @@ import WarcoopMenuPage from "./features/customer/WarcoopMenuPage";
 import CheckoutPage from "./features/customer/CheckoutPage";
 import OrderSuccessPage from "./features/customer/OrderSuccessPage";
 import PosLayout from "./components/layout/PosLayout";
-import PosIndexRedirect from "./components/layout/PosIndexRedirect";
+import PosIndexRedirect from "./components/PosIndexRedirect";
 import Category from "./features/categories/Category";
 import Product from "./features/products/Product";
 import Order from "./features/orders/Order";

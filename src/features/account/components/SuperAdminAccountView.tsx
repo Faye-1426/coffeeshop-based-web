@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Coffee, Mail, Store, User } from "lucide-react";
 import Card from "../../../components/ui/Card";
 import Button from "../../../components/ui/Button";
-import { usePosRole } from "../../../components/layout/usePosRole";
+import { usePosRole } from "../../../hooks/usePosRole";
 import { POS_DEMO_TENANT_NAME, POS_DEMO_USER_NAME } from "../data";
 import { useTenant } from "../../../lib/supabase/TenantContext";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";

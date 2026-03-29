@@ -1,4 +1,4 @@
-import { usePosRole } from "../../components/layout/usePosRole";
+import { usePosRole } from "../../hooks/usePosRole";
 import { useTenant } from "../../lib/supabase/TenantContext";
 import CafeAdminAccountNotice from "./components/CafeAdminAccountNotice";
 import SuperAdminAccountView from "./components/SuperAdminAccountView";

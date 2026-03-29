@@ -13,19 +13,11 @@ export default function UserMenuDropdown() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const {
-    isSupabase,
-    user,
-    profile,
-    tenantName,
-    session,
-    refreshProfile,
-  } = useTenant();
+  const { isSupabase, user, profile, tenantName, session, refreshProfile } =
+    useTenant();
 
   const displayTenant =
-    isSupabase && session
-      ? tenantName ?? "—"
-      : POS_DEMO_TENANT_NAME;
+    isSupabase && session ? (tenantName ?? "—") : POS_DEMO_TENANT_NAME;
   const displayUser =
     isSupabase && session
       ? profile?.full_name || user?.email || "User"
@@ -103,13 +95,13 @@ export default function UserMenuDropdown() {
             <div className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">
               Tenant
             </div>
-            <div className="mt-1 text-sm font-extrabold text-neutral-900 leading-snug break-words">
+            <div className="mt-1 text-sm font-extrabold text-neutral-900 leading-snug wrap-break-word">
               {displayTenant}
             </div>
             <div className="mt-3 text-[11px] font-bold uppercase tracking-wide text-neutral-500">
               User
             </div>
-            <div className="mt-1 text-sm font-bold text-neutral-800 break-words">
+            <div className="mt-1 text-sm font-bold text-neutral-800 wrap-break-word">
               {displayUser}
             </div>
           </div>

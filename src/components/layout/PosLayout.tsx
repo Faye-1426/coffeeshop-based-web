@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import PosTopNavbar from "./PosTopNavbar";
 import SuperAdminTopNavbar from "./SuperAdminTopNavbar";
 import OutletSubscriptionGate from "./OutletSubscriptionGate";
-import { PosRoleProvider } from "./PosRoleProvider";
+import { PosRoleProvider } from "../../store/PosRoleProvider";
 import { useTenant } from "../../lib/supabase/TenantContext";
 
 function PosAccessGate({ children }: { children: React.ReactNode }) {
