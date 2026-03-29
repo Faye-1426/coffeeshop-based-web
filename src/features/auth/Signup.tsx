@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import AuthPageShell from "./components/AuthPageShell";
 
 export default function Signup() {
@@ -7,16 +8,55 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setInfo(null);
+
+    if (isSupabaseConfigured()) {
+      const sb = getSupabase();
+      if (!sb) {
+        setError("Supabase tidak tersedia.");
+        return;
+      }
+      setBusy(true);
+      try {
+        const { error: signErr } = await sb.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { full_name: name.trim() || undefined },
+          },
+        });
+        if (signErr) {
+          setError(signErr.message);
+          return;
+        }
+        setInfo(
+          "Periksa email untuk konfirmasi (jika diaktifkan di Supabase), lalu masuk.",
+        );
+        navigate("/login", { replace: true });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     navigate("/login", { replace: true });
   };
 
   return (
     <AuthPageShell
       title="Join Warcoop"
-      subtitle="Create a demo staff account"
+      subtitle={
+        isSupabaseConfigured()
+          ? "Create a Supabase Auth account"
+          : "Create a demo staff account"
+      }
       footer={
         <Link
           to="/"
@@ -27,7 +67,7 @@ export default function Signup() {
       }
     >
       <form
-        onSubmit={onSubmit}
+        onSubmit={(e) => void onSubmit(e)}
         className="rounded-3xl border border-neutral-200 bg-white p-6 sm:p-8 shadow-xl"
       >
         <label className="block">
@@ -63,11 +103,19 @@ export default function Signup() {
           />
         </label>
 
+        {error ? (
+          <p className="mt-3 text-sm text-red-700 font-semibold">{error}</p>
+        ) : null}
+        {info ? (
+          <p className="mt-3 text-sm text-neutral-700 font-semibold">{info}</p>
+        ) : null}
+
         <button
           type="submit"
-          className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-extrabold text-white shadow hover:bg-red-700 transition"
+          disabled={busy}
+          className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-extrabold text-white shadow hover:bg-red-700 transition disabled:opacity-60"
         >
-          Create account
+          {busy ? "Creating…" : "Create account"}
         </button>
 
         <p className="mt-4 text-center text-sm text-neutral-600">
@@ -79,9 +127,11 @@ export default function Signup() {
             Sign in
           </Link>
         </p>
-        <p className="mt-3 text-center text-[11px] text-neutral-500">
-          Nothing is stored; you will be sent back to sign in.
-        </p>
+        {!isSupabaseConfigured() ? (
+          <p className="mt-3 text-center text-[11px] text-neutral-500">
+            Nothing is stored; you will be sent back to sign in.
+          </p>
+        ) : null}
       </form>
     </AuthPageShell>
   );

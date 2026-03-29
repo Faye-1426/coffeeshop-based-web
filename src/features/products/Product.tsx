@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import { useProductsStore } from "./store/productsStore";
@@ -5,8 +6,18 @@ import { useSortedProducts } from "./hooks/useSortedProducts";
 import ProductGrid from "./components/ProductGrid";
 import ProductModal from "./components/ProductModal";
 import type { PosProduct } from "../../types/pos";
+import { isSupabaseConfigured } from "../../lib/supabaseClient";
+import { useTenant } from "../../lib/supabase/TenantContext";
 
 export default function Product() {
+  const { session } = useTenant();
+  const syncFromRemote = useProductsStore((s) => s.syncFromRemote);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !session) return;
+    void syncFromRemote();
+  }, [session?.user?.id, syncFromRemote]);
+
   const categories = useProductsStore((s) => s.categories);
   const products = useProductsStore((s) => s.products);
   const modalOpen = useProductsStore((s) => s.modalOpen);
@@ -25,7 +36,11 @@ export default function Product() {
     <div>
       <PageHeader
         title="Products"
-        subtitle="Stok dan harga (dummy)."
+        subtitle={
+          isSupabaseConfigured()
+            ? "Stok mengikuti database; penjualan mengurangi stok via trigger."
+            : "Stok dan harga (dummy)."
+        }
         action={<Button onClick={openCreate}>Add product</Button>}
       />
 

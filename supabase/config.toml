@@ -1,0 +1,6 @@
+# Replace with your project ID when using Supabase CLI (`supabase link`).
+# Run migrations: `supabase db push` or paste SQL from `migrations/` into the SQL editor.
+project_id = "your-project-ref"
+
+[api]
+enabled = true
