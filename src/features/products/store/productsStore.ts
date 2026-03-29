@@ -4,6 +4,15 @@ import {
   posProductsSeed,
 } from "../../../data/posDummyData";
 import type { PosCategory, PosProduct } from "../../../types/pos";
+import { isSupabaseConfigured } from "../../../lib/supabaseClient";
+import { requireRemoteTenantId } from "../../../lib/supabase/remoteTenant";
+import {
+  sbDeleteProduct,
+  sbFetchCategories,
+  sbFetchProducts,
+  sbInsertProduct,
+  sbUpdateProduct,
+} from "../../../lib/posSupabaseData";
 
 export type ProductFormState = {
   name: string;
@@ -23,8 +32,9 @@ type ProductsState = {
   openEdit: (p: PosProduct) => void;
   setForm: (updater: (f: ProductFormState) => ProductFormState) => void;
   closeModal: () => void;
-  save: () => void;
-  remove: (id: string) => void;
+  save: () => void | Promise<void>;
+  remove: (id: string) => void | Promise<void>;
+  syncFromRemote: () => Promise<void>;
 };
 
 const emptyForm = (categoryId: string): ProductFormState => ({
@@ -35,12 +45,27 @@ const emptyForm = (categoryId: string): ProductFormState => ({
   badge: "",
 });
 
+const useSeed = !isSupabaseConfigured();
+
 export const useProductsStore = create<ProductsState>((set, get) => ({
-  categories: [...posCategoriesSeed],
-  products: [...posProductsSeed],
+  categories: useSeed ? [...posCategoriesSeed] : [],
+  products: useSeed ? [...posProductsSeed] : [],
   modalOpen: false,
   editing: null,
-  form: emptyForm(posCategoriesSeed[0]?.id ?? ""),
+  form: emptyForm(useSeed ? posCategoriesSeed[0]?.id ?? "" : ""),
+
+  syncFromRemote: async () => {
+    if (!isSupabaseConfigured()) return;
+    const [categories, products] = await Promise.all([
+      sbFetchCategories(),
+      sbFetchProducts(),
+    ]);
+    set({
+      categories,
+      products,
+      form: emptyForm(categories[0]?.id ?? get().form.categoryId),
+    });
+  },
 
   openCreate: () => {
     const cats = get().categories;
@@ -71,13 +96,42 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
 
   closeModal: () => set({ modalOpen: false }),
 
-  save: () => {
+  save: async () => {
     const { editing, form } = get();
     const name = form.name.trim();
     const price = Number(form.price);
     const stock = Number(form.stock);
     if (!name || Number.isNaN(price) || Number.isNaN(stock)) return;
     const badge = form.badge.trim() || undefined;
+
+    if (isSupabaseConfigured()) {
+      try {
+        const tid = requireRemoteTenantId();
+        if (editing) {
+          await sbUpdateProduct(editing.id, {
+            name,
+            price,
+            stock,
+            categoryId: form.categoryId,
+            badge,
+          });
+        } else {
+          await sbInsertProduct(tid, {
+            name,
+            price,
+            stock,
+            categoryId: form.categoryId,
+            badge,
+          });
+        }
+        await get().syncFromRemote();
+        set({ modalOpen: false });
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : "Gagal menyimpan produk.");
+      }
+      return;
+    }
+
     if (editing) {
       set((s) => ({
         products: s.products.map((p) =>
@@ -114,8 +168,19 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     }
   },
 
-  remove: (id) => {
+  remove: async (id) => {
     if (!window.confirm("Hapus produk?")) return;
+
+    if (isSupabaseConfigured()) {
+      try {
+        await sbDeleteProduct(id);
+        await get().syncFromRemote();
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : "Gagal menghapus produk.");
+      }
+      return;
+    }
+
     set((s) => ({
       products: s.products.filter((p) => p.id !== id),
     }));

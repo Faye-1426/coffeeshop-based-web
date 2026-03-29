@@ -7,9 +7,9 @@ import {
   Package,
   Receipt,
   Tags,
-  User,
 } from "lucide-react";
 import UserMenuDropdown from "./UserMenuDropdown";
+import { useTenant } from "../../lib/supabase/TenantContext";
 
 const links = [
   { to: "/pos", label: "Dashboard", end: true, Icon: LayoutDashboard },
@@ -18,12 +18,6 @@ const links = [
   { to: "/pos/orders", label: "Orders", end: false, Icon: ClipboardList },
   { to: "/pos/transactions", label: "Transactions", end: false, Icon: Receipt },
   { to: "/pos/outstanding", label: "Outstanding", end: false, Icon: CircleAlert },
-  {
-    to: "/pos/account",
-    label: "Account",
-    end: false,
-    Icon: User,
-  },
 ] as const;
 
 function linkClass(isActive: boolean): string {
@@ -36,6 +30,8 @@ function linkClass(isActive: boolean): string {
 }
 
 export default function PosTopNavbar() {
+  const { isSupabase, session } = useTenant();
+
   return (
     <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/80">
       <div className="flex flex-col gap-3 px-10 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -73,7 +69,7 @@ export default function PosTopNavbar() {
 
         <div className="flex items-center gap-2 text-sm shrink-0 sm:pl-2">
           <span className="text-neutral-500 font-medium hidden sm:inline text-xs pr-1">
-            Demo
+            {isSupabase && session ? "Supabase" : "Demo"}
           </span>
           <UserMenuDropdown />
         </div>

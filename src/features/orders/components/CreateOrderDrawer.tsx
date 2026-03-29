@@ -15,7 +15,9 @@ export default function CreateOrderDrawer({
   open: boolean;
   onClose: () => void;
   products: PosProduct[];
-  onCreate: (order: Omit<PosOrder, "id" | "createdAt">) => void;
+  onCreate: (
+    order: Omit<PosOrder, "id" | "createdAt">,
+  ) => void | Promise<void>;
 }) {
   const [tableNumber, setTableNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -53,19 +55,25 @@ export default function CreateOrderDrawer({
   };
 
   const submit = () => {
-    if (!tableNumber.trim() || !customerName.trim() || lines.length === 0)
-      return;
-    onCreate({
-      status: "pending",
-      tableNumber: tableNumber.trim(),
-      customerName: customerName.trim(),
-      items: lines,
-      total,
-    });
-    setTableNumber("");
-    setCustomerName("");
-    setQtyByProduct({});
-    onClose();
+    void (async () => {
+      if (!tableNumber.trim() || !customerName.trim() || lines.length === 0)
+        return;
+      try {
+        await onCreate({
+          status: "pending",
+          tableNumber: tableNumber.trim(),
+          customerName: customerName.trim(),
+          items: lines,
+          total,
+        });
+        setTableNumber("");
+        setCustomerName("");
+        setQtyByProduct({});
+        onClose();
+      } catch {
+        /* store layer surfaces errors via alert */
+      }
+    })();
   };
 
   return (

@@ -1,6 +1,7 @@
 import Card from "../../../components/ui/Card";
 import Badge from "../../../components/ui/Badge";
 import { formatIDR } from "../../../lib/formatCurrency";
+import { formatTxLabel } from "../../../lib/formatPosIds";
 import type { PosTransaction } from "../../../types/pos";
 
 export default function TransactionsTable({
@@ -28,7 +29,9 @@ export default function TransactionsTable({
                 key={tx.id}
                 className="border-b border-neutral-100 hover:bg-neutral-50/80"
               >
-                <td className="px-5 py-3 font-mono font-semibold">{tx.id}</td>
+                <td className="px-5 py-3 font-mono font-semibold">
+                  {formatTxLabel(tx.id)}
+                </td>
                 <td className="px-5 py-3 uppercase">{tx.method}</td>
                 <td className="px-5 py-3 font-bold">{formatIDR(tx.amount)}</td>
                 <td className="px-5 py-3">{formatIDR(tx.change)}</td>

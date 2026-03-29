@@ -1,0 +1,134 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT categories_pkey PRIMARY KEY (id),
+  CONSTRAINT categories_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id)
+);
+CREATE TABLE public.order_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  tenant_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  line_item_name text NOT NULL,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  unit_price_at_sale numeric NOT NULL CHECK (unit_price_at_sale >= 0::numeric),
+  CONSTRAINT order_items_pkey PRIMARY KEY (id),
+  CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
+  CONSTRAINT order_items_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id),
+  CONSTRAINT order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
+);
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  table_number text NOT NULL DEFAULT ''::text,
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::order_status,
+  total_price numeric NOT NULL DEFAULT 0 CHECK (total_price >= 0::numeric),
+  customer_name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT orders_pkey PRIMARY KEY (id),
+  CONSTRAINT orders_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id)
+);
+CREATE TABLE public.outstanding (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  customer_name text NOT NULL,
+  amount numeric NOT NULL CHECK (amount >= 0::numeric),
+  due_date date NOT NULL,
+  transaction_id uuid NOT NULL,
+  CONSTRAINT outstanding_pkey PRIMARY KEY (id),
+  CONSTRAINT outstanding_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id),
+  CONSTRAINT outstanding_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES public.transactions(id)
+);
+CREATE TABLE public.platform_settings (
+  id smallint NOT NULL DEFAULT 1 CHECK (id = 1),
+  brand_name text,
+  primary_color text,
+  logo_url text,
+  support_email text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT platform_settings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.products (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  category_id uuid NOT NULL,
+  name text NOT NULL,
+  price numeric NOT NULL CHECK (price >= 0::numeric),
+  stock_units integer NOT NULL DEFAULT 0 CHECK (stock_units >= 0),
+  image_url text,
+  badge text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT products_pkey PRIMARY KEY (id),
+  CONSTRAINT products_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id),
+  CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  tenant_id uuid,
+  role_id integer NOT NULL,
+  full_name text NOT NULL DEFAULT ''::text,
+  is_active boolean NOT NULL DEFAULT true,
+  is_super_admin boolean NOT NULL DEFAULT false,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
+  CONSTRAINT profiles_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id),
+  CONSTRAINT profiles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id)
+);
+CREATE TABLE public.roles (
+  id integer NOT NULL CHECK (id >= 0 AND id <= 3),
+  role_name text NOT NULL UNIQUE,
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.subs_key (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  plain_key text NOT NULL UNIQUE,
+  is_active boolean NOT NULL DEFAULT false,
+  tenant_id uuid UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT subs_key_pkey PRIMARY KEY (id),
+  CONSTRAINT subs_key_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id)
+);
+CREATE TABLE public.subscription_plans (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  slug text NOT NULL UNIQUE,
+  price_monthly numeric NOT NULL DEFAULT 0 CHECK (price_monthly >= 0::numeric),
+  description text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT subscription_plans_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.tenants (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  slug text NOT NULL UNIQUE,
+  sub_status text NOT NULL DEFAULT 'active'::text CHECK (sub_status = ANY (ARRAY['active'::text, 'expired'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_owner boolean NOT NULL DEFAULT false,
+  plan_id uuid,
+  end_subscription timestamp with time zone,
+  logo_url text,
+  CONSTRAINT tenants_pkey PRIMARY KEY (id),
+  CONSTRAINT tenants_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.subscription_plans(id)
+);
+CREATE TABLE public.transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  order_id uuid,
+  payment_method USER-DEFINED NOT NULL,
+  amount_paid numeric NOT NULL CHECK (amount_paid >= 0::numeric),
+  change_amount numeric NOT NULL DEFAULT 0 CHECK (change_amount >= 0::numeric),
+  customer_name text,
+  status USER-DEFINED NOT NULL DEFAULT 'unpaid'::transaction_status,
+  is_paid boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id),
+  CONSTRAINT transactions_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+);

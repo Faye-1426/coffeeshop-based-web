@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import { useCategoriesStore } from "./store/categoriesStore";
@@ -5,8 +6,18 @@ import { useCategoryRows } from "./hooks/useCategoryRows";
 import CategoryTable from "./components/CategoryTable";
 import CategoryModal from "./components/CategoryModal";
 import type { PosCategory } from "../../types/pos";
+import { isSupabaseConfigured } from "../../lib/supabaseClient";
+import { useTenant } from "../../lib/supabase/TenantContext";
 
 export default function Category() {
+  const { session } = useTenant();
+  const syncFromRemote = useCategoriesStore((s) => s.syncFromRemote);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !session) return;
+    void syncFromRemote();
+  }, [session?.user?.id, syncFromRemote]);
+
   const categories = useCategoriesStore((s) => s.categories);
   const productsSnapshot = useCategoriesStore((s) => s.productsSnapshot);
   const modalOpen = useCategoriesStore((s) => s.modalOpen);
@@ -25,7 +36,11 @@ export default function Category() {
     <div>
       <PageHeader
         title="Categories"
-        subtitle="Kelola kategori menu (simulasi lokal)."
+        subtitle={
+          isSupabaseConfigured()
+            ? "Sinkron dengan Supabase (RLS per tenant)."
+            : "Kelola kategori menu (simulasi lokal)."
+        }
         action={<Button onClick={openCreate}>Add category</Button>}
       />
 
