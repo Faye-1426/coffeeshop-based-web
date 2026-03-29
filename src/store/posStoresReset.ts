@@ -1,4 +1,6 @@
-import { isSupabaseConfigured } from "./supabaseClient";
+import { isSupabaseConfigured } from "../lib/supabaseClient";
+import { queryClient } from "../lib/queryClient";
+import { posQueryKeys } from "../lib/keys/posQueryKeys";
 import { useCategoriesStore } from "../features/categories/store/categoriesStore";
 import { useProductsStore } from "../features/products/store/productsStore";
 import { useOrdersStore } from "../features/orders/store/ordersStore";
@@ -16,6 +18,8 @@ const emptyProductForm = {
 /** Kosongkan cache POS di memori setelah sign out (mode Supabase). */
 export function resetPosStoresAfterSignOut() {
   if (!isSupabaseConfigured()) return;
+
+  void queryClient.removeQueries({ queryKey: posQueryKeys.root });
 
   useCategoriesStore.setState({
     categories: [],

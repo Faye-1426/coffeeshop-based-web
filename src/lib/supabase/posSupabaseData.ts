@@ -1,4 +1,4 @@
-import { getSupabase } from "./supabaseClient";
+import { getSupabase } from "../supabaseClient";
 import type {
   OrderStatus,
   PaymentMethod,
@@ -8,7 +8,7 @@ import type {
   PosOutstanding,
   PosProduct,
   PosTransaction,
-} from "../types/pos";
+} from "../../types/pos";
 
 const LOW_STOCK_THRESHOLD = 10;
 

@@ -2,18 +2,18 @@ import { create } from "zustand";
 import { posCategoriesSeed, posProductsSeed } from "../../../data/posDummyData";
 import type { PosCategory, PosProduct } from "../../../types/pos";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import { requireRemoteTenantId } from "../../../lib/supabase/remoteTenant";
+import { requireRemoteTenantId } from "../../../features/tenants/lib/remoteTenant";
+import { queryClient } from "../../../lib/queryClient";
+import { posQueryKeys } from "../../../lib/keys/posQueryKeys";
 import {
   sbDeleteCategory,
-  sbFetchCategories,
-  sbFetchProducts,
   sbInsertCategory,
   sbUpdateCategory,
-} from "../../../lib/posSupabaseData";
+} from "../../../lib/supabase/posSupabaseData";
 
 type CategoriesState = {
   categories: PosCategory[];
-  /** Snapshot for item counts (same pattern as original local state). */
+  /** Snapshot for item counts (dummy mode only). */
   productsSnapshot: PosProduct[];
   modalOpen: boolean;
   editing: PosCategory | null;
@@ -24,7 +24,6 @@ type CategoriesState = {
   closeModal: () => void;
   save: () => void | Promise<void>;
   remove: (id: string) => void | Promise<void>;
-  syncFromRemote: () => Promise<void>;
 };
 
 const useSeed = !isSupabaseConfigured();
@@ -48,15 +47,6 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
 
   closeModal: () => set({ modalOpen: false }),
 
-  syncFromRemote: async () => {
-    if (!isSupabaseConfigured()) return;
-    const [categories, productsSnapshot] = await Promise.all([
-      sbFetchCategories(),
-      sbFetchProducts(),
-    ]);
-    set({ categories, productsSnapshot });
-  },
-
   save: async () => {
     const { editing, name } = get();
     const trimmed = name.trim();
@@ -70,7 +60,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
         } else {
           await sbInsertCategory(tid, trimmed);
         }
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
         set({ modalOpen: false });
       } catch (e) {
         window.alert(
@@ -108,7 +98,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     if (isSupabaseConfigured()) {
       try {
         await sbDeleteCategory(id);
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
       } catch (e) {
         window.alert(
           e instanceof Error ? e.message : "Gagal menghapus kategori.",

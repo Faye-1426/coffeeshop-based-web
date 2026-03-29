@@ -1,13 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import {
-  sbFetchSubscriptionPlans,
-  sbInsertTenant,
-  type SubscriptionPlanRow,
-} from "../../lib/superAdminData";
+import { sbInsertTenant } from "../../lib/supabase/superAdminData";
+import { superQueryKeys } from "../../lib/keys/superQueryKeys";
+import { useSuperSubscriptionPlansQuery } from "../../hooks/useSuperAdminQueries";
 
 function slugify(s: string) {
   return s
@@ -17,25 +16,17 @@ function slugify(s: string) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
-export default function SuperTenantNew() {
+export default function AddTenant() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const plansQuery = useSuperSubscriptionPlansQuery();
+  const plans = (plansQuery.data ?? []).filter((x) => x.is_active);
+
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [planId, setPlanId] = useState<string>("");
-  const [plans, setPlans] = useState<SubscriptionPlanRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const p = await sbFetchSubscriptionPlans();
-        setPlans(p.filter((x) => x.is_active));
-      } catch {
-        setPlans([]);
-      }
-    })();
-  }, []);
 
   useEffect(() => {
     if (name && !slug) setSlug(slugify(name));
@@ -55,6 +46,10 @@ export default function SuperTenantNew() {
         name: name.trim(),
         slug: sn,
         plan_id: planId || null,
+      });
+      await queryClient.invalidateQueries({ queryKey: superQueryKeys.tenants() });
+      await queryClient.invalidateQueries({
+        queryKey: superQueryKeys.dashboardSummary(),
       });
       navigate(`/pos/super/tenants/${row.id}`, { replace: true });
     } catch (ex) {
@@ -90,6 +85,7 @@ export default function SuperTenantNew() {
             <select
               value={planId}
               onChange={(e) => setPlanId(e.target.value)}
+              disabled={plansQuery.isPending}
               className="mt-1 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-red-600/25"
             >
               <option value="">—</option>

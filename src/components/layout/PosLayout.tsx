@@ -3,7 +3,7 @@ import PosTopNavbar from "./PosTopNavbar";
 import SuperAdminTopNavbar from "./SuperAdminTopNavbar";
 import OutletSubscriptionGate from "./OutletSubscriptionGate";
 import { PosRoleProvider } from "../../store/PosRoleProvider";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import { useTenant } from "../../features/tenants/context/TenantContext";
 
 function PosAccessGate({ children }: { children: React.ReactNode }) {
   const { isSupabase, loading, session, profile, isSuperAdmin } = useTenant();

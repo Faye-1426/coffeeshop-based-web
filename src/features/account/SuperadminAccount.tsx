@@ -1,39 +1,26 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Building2, Store } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
-import { sbFetchTenantById, type SuperTenantRow } from "../../lib/superAdminData";
+import { useSuperTenantByIdQuery } from "../../hooks/useSuperAdminQueries";
 
-export default function SuperTenantAccount() {
+export default function SuperadminAccount() {
   const { tenantId } = useParams<{ tenantId: string }>();
-  const [row, setRow] = useState<SuperTenantRow | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!tenantId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const t = await sbFetchTenantById(tenantId);
-        if (!cancelled) {
-          setRow(t);
-          setErr(t ? null : "Tenant tidak ditemukan.");
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setErr(e instanceof Error ? e.message : "Gagal memuat.");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
+  const tenantQuery = useSuperTenantByIdQuery(tenantId);
+  const row = tenantQuery.data ?? null;
 
   if (!tenantId) {
     return <p className="text-sm text-neutral-600">Parameter tidak valid.</p>;
   }
+
+  const err =
+    tenantQuery.isError
+      ? tenantQuery.error instanceof Error
+        ? tenantQuery.error.message
+        : "Gagal memuat."
+      : tenantQuery.isSuccess && !row
+        ? "Tenant tidak ditemukan."
+        : null;
 
   return (
     <div className="space-y-6 max-w-xl">
@@ -52,7 +39,9 @@ export default function SuperTenantAccount() {
 
       {err ? <p className="text-sm font-semibold text-red-700">{err}</p> : null}
 
-      {row ? (
+      {tenantQuery.isPending ? (
+        <p className="text-sm text-neutral-500">Memuat…</p>
+      ) : row ? (
         <Card className="p-6 sm:p-8">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white">

@@ -9,7 +9,7 @@ import {
   Tags,
 } from "lucide-react";
 import UserMenuDropdown from "./UserMenuDropdown";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import { useTenant } from "../../features/tenants/context/TenantContext";
 
 const links = [
   { to: "/pos", label: "Dashboard", end: true, Icon: LayoutDashboard },

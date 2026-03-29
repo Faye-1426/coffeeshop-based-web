@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -10,74 +9,33 @@ import {
 } from "recharts";
 import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
-import { getSupabase } from "../../lib/supabaseClient";
 import { formatIDR } from "../../lib/formatCurrency";
+import type { SuperTenantRow } from "../../lib/supabase/superAdminData";
 import {
-  sbRpcSuperDashboardSummary,
-  sbFetchTenantsForSuper,
-  type SuperTenantRow,
-} from "../../lib/superAdminData";
-
-type TxRow = {
-  id: string;
-  amount_paid: number;
-  status: string;
-  created_at: string;
-  tenant_id: string;
-};
+  useSuperDashboardSummaryQuery,
+  useSuperRecentTransactionsQuery,
+  useSuperTenantsQuery,
+} from "../../hooks/useSuperAdminQueries";
 
 export default function SuperDashboard() {
-  const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
-  const [summaryErr, setSummaryErr] = useState<string | null>(null);
-  const [tenants, setTenants] = useState<SuperTenantRow[]>([]);
-  const [tx, setTx] = useState<TxRow[]>([]);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const summaryQuery = useSuperDashboardSummaryQuery();
+  const tenantsQuery = useSuperTenantsQuery();
+  const txQuery = useSuperRecentTransactionsQuery();
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const s = await sbRpcSuperDashboardSummary();
-        if (!cancelled) {
-          setSummary(s);
-          setSummaryErr(null);
-        }
-        const tlist = await sbFetchTenantsForSuper();
-        if (!cancelled) setTenants(tlist);
-        const sb = getSupabase();
-        if (sb) {
-          const { data: txData, error: txErr } = await sb
-            .from("transactions")
-            .select("id, amount_paid, status, created_at, tenant_id")
-            .order("created_at", { ascending: false })
-            .limit(12);
-          if (txErr) throw txErr;
-          if (!cancelled) {
-            setTx(
-              (txData ?? []).map((r) => ({
-                id: r.id,
-                amount_paid: Number(r.amount_paid),
-                status: String(r.status),
-                created_at: String(r.created_at),
-                tenant_id: String(r.tenant_id),
-              })),
-            );
-          }
-        }
-        if (!cancelled) setLoadErr(null);
-      } catch (e) {
-        if (!cancelled) {
-          setSummaryErr(
-            e instanceof Error ? e.message : "Gagal memuat ringkasan.",
-          );
-          setLoadErr(e instanceof Error ? e.message : "Gagal memuat data.");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const summary = summaryQuery.data ?? null;
+  const tenants: SuperTenantRow[] = tenantsQuery.data ?? [];
+  const tx = txQuery.data ?? [];
+
+  const summaryErr = summaryQuery.isError
+    ? summaryQuery.error instanceof Error
+      ? summaryQuery.error.message
+      : "Gagal memuat ringkasan."
+    : null;
+  const loadErr = txQuery.isError
+    ? txQuery.error instanceof Error
+      ? txQuery.error.message
+      : "Gagal memuat transaksi."
+    : null;
 
   const num = (v: unknown) =>
     typeof v === "number" ? v : typeof v === "string" ? Number(v) : 0;
@@ -110,7 +68,9 @@ export default function SuperDashboard() {
             Total outlet
           </div>
           <div className="mt-2 text-2xl font-extrabold text-neutral-900">
-            {summary ? String(summary.total_tenants ?? "—") : "…"}
+            {summary && !summaryQuery.isPending
+              ? String(summary.total_tenants ?? "—")
+              : "…"}
           </div>
         </Card>
         <Card className="p-5">
@@ -118,7 +78,9 @@ export default function SuperDashboard() {
             Subscriber aktif
           </div>
           <div className="mt-2 text-2xl font-extrabold text-neutral-900">
-            {summary ? String(summary.subscriber_tenants ?? "—") : "…"}
+            {summary && !summaryQuery.isPending
+              ? String(summary.subscriber_tenants ?? "—")
+              : "…"}
           </div>
         </Card>
         <Card className="p-5">
@@ -126,7 +88,9 @@ export default function SuperDashboard() {
             Transaksi paid
           </div>
           <div className="mt-2 text-2xl font-extrabold text-neutral-900">
-            {summary ? String(summary.total_paid_transactions ?? "—") : "…"}
+            {summary && !summaryQuery.isPending
+              ? String(summary.total_paid_transactions ?? "—")
+              : "…"}
           </div>
         </Card>
         <Card className="p-5">
@@ -134,7 +98,7 @@ export default function SuperDashboard() {
             Revenue global
           </div>
           <div className="mt-2 text-xl font-extrabold text-neutral-900 tabular-nums">
-            {summary
+            {summary && !summaryQuery.isPending
               ? formatIDR(num(summary.total_revenue_global))
               : "…"}
           </div>
@@ -169,21 +133,25 @@ export default function SuperDashboard() {
             </Link>
           </div>
           <ul className="mt-4 max-h-56 space-y-2 overflow-y-auto text-sm">
-            {tenants.map((t) => (
-              <li
-                key={t.id}
-                className="flex justify-between gap-2 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-2"
-              >
-                <span className="font-semibold text-neutral-800 truncate">
-                  {t.name}
-                </span>
-                {t.is_owner ? (
-                  <span className="shrink-0 text-[10px] font-bold uppercase text-amber-800">
-                    Platform
+            {tenantsQuery.isPending ? (
+              <li className="text-neutral-500">Memuat…</li>
+            ) : (
+              tenants.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex justify-between gap-2 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-2"
+                >
+                  <span className="font-semibold text-neutral-800 truncate">
+                    {t.name}
                   </span>
-                ) : null}
-              </li>
-            ))}
+                  {t.is_owner ? (
+                    <span className="shrink-0 text-[10px] font-bold uppercase text-amber-800">
+                      Platform
+                    </span>
+                  ) : null}
+                </li>
+              ))
+            )}
           </ul>
         </Card>
       </div>
@@ -205,20 +173,28 @@ export default function SuperDashboard() {
               </tr>
             </thead>
             <tbody>
-              {tx.map((row) => (
-                <tr key={row.id} className="border-b border-neutral-100">
-                  <td className="py-2 pr-4 text-neutral-600 tabular-nums">
-                    {new Date(row.created_at).toLocaleString()}
-                  </td>
-                  <td className="py-2 pr-4 font-mono text-xs text-neutral-500">
-                    {row.tenant_id.slice(0, 8)}…
-                  </td>
-                  <td className="py-2 pr-4 font-semibold">{row.status}</td>
-                  <td className="py-2 text-right font-semibold tabular-nums">
-                    {formatIDR(row.amount_paid)}
+              {txQuery.isPending ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-neutral-500">
+                    Memuat transaksi…
                   </td>
                 </tr>
-              ))}
+              ) : (
+                tx.map((row) => (
+                  <tr key={row.id} className="border-b border-neutral-100">
+                    <td className="py-2 pr-4 text-neutral-600 tabular-nums">
+                      {new Date(row.created_at).toLocaleString()}
+                    </td>
+                    <td className="py-2 pr-4 font-mono text-xs text-neutral-500">
+                      {row.tenant_id.slice(0, 8)}…
+                    </td>
+                    <td className="py-2 pr-4 font-semibold">{row.status}</td>
+                    <td className="py-2 text-right font-semibold tabular-nums">
+                      {formatIDR(row.amount_paid)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         )}

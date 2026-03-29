@@ -1,20 +1,15 @@
-import { useEffect } from "react";
 import PageHeader from "../../components/ui/PageHeader";
-import { useTransactions } from "./hooks/useTransactions";
+import { useTransactionsStore } from "./store/transactionsStore";
 import TransactionsTable from "./components/TransactionsTable";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
-import { useTenant } from "../../lib/supabase/TenantContext";
-import { useTransactionsStore } from "./store/transactionsStore";
+import { usePosTransactionsQuery } from "../../hooks/usePosRemoteData";
 
 export default function Transaction() {
-  const { session } = useTenant();
-  const transactions = useTransactions();
-  const syncFromRemote = useTransactionsStore((s) => s.syncFromRemote);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !session) return;
-    void syncFromRemote();
-  }, [session?.user?.id, syncFromRemote]);
+  const remote = usePosTransactionsQuery();
+  const storeRows = useTransactionsStore((s) => s.transactions);
+  const supa = isSupabaseConfigured();
+  const transactions = supa ? (remote.data ?? []) : storeRows;
+  const listLoading = supa && remote.isPending;
 
   return (
     <div>
@@ -22,12 +17,18 @@ export default function Transaction() {
         title="Transactions"
         subtitle={
           isSupabaseConfigured()
-            ? "Riwayat dari tabel transactions (RLS)."
-            : "Riwayat pembayaran (dummy)."
+            ? "Riwayat pembayaran dari database (RLS per tenant)."
+            : "Riwayat dummy (lokal)."
         }
       />
 
-      <TransactionsTable transactions={transactions} />
+      {supa && remote.isError ? (
+        <p className="text-sm text-red-700 py-2">
+          Gagal memuat data. Coba muat ulang halaman.
+        </p>
+      ) : null}
+
+      <TransactionsTable transactions={transactions} loading={listLoading} />
     </div>
   );
 }

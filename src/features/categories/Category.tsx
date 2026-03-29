@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import { useCategoriesStore } from "./store/categoriesStore";
@@ -7,19 +6,17 @@ import CategoryTable from "./components/CategoryTable";
 import CategoryModal from "./components/CategoryModal";
 import type { PosCategory } from "../../types/pos";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import {
+  usePosCategoriesQuery,
+  usePosProductsQuery,
+} from "../../hooks/usePosRemoteData";
 
 export default function Category() {
-  const { session } = useTenant();
-  const syncFromRemote = useCategoriesStore((s) => s.syncFromRemote);
+  const categoriesQuery = usePosCategoriesQuery();
+  const productsQuery = usePosProductsQuery();
 
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !session) return;
-    void syncFromRemote();
-  }, [session?.user?.id, syncFromRemote]);
-
-  const categories = useCategoriesStore((s) => s.categories);
-  const productsSnapshot = useCategoriesStore((s) => s.productsSnapshot);
+  const storeCategories = useCategoriesStore((s) => s.categories);
+  const storeProductsSnapshot = useCategoriesStore((s) => s.productsSnapshot);
   const modalOpen = useCategoriesStore((s) => s.modalOpen);
   const editing = useCategoriesStore((s) => s.editing);
   const name = useCategoriesStore((s) => s.name);
@@ -30,7 +27,17 @@ export default function Category() {
   const save = useCategoriesStore((s) => s.save);
   const remove = useCategoriesStore((s) => s.remove);
 
+  const supa = isSupabaseConfigured();
+  const categories = supa
+    ? (categoriesQuery.data ?? [])
+    : storeCategories;
+  const productsSnapshot = supa
+    ? (productsQuery.data ?? [])
+    : storeProductsSnapshot;
+
   const rows = useCategoryRows(categories, productsSnapshot);
+  const listLoading =
+    supa && (categoriesQuery.isPending || productsQuery.isPending);
 
   return (
     <div>
@@ -44,8 +51,15 @@ export default function Category() {
         action={<Button onClick={openCreate}>Add category</Button>}
       />
 
+      {supa && (categoriesQuery.isError || productsQuery.isError) ? (
+        <p className="text-sm text-red-700 py-2">
+          Gagal memuat data. Coba muat ulang halaman.
+        </p>
+      ) : null}
+
       <CategoryTable
         rows={rows}
+        loading={listLoading}
         onEdit={(c: PosCategory) => openEdit(c)}
         onDelete={remove}
       />

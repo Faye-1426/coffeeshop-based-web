@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { KeyRound } from "lucide-react";
 import Button from "../../../components/ui/Button";
-import { useTenant } from "../../../lib/supabase/TenantContext";
-import { sbValidateAndBindSubscriptionKey } from "../../../lib/superAdminData";
+import { useTenant } from "../../../features/tenants/context/TenantContext";
+import { sbValidateAndBindSubscriptionKey } from "../../../lib/supabase/superAdminData";
 
 export default function OutletSubscriptionKeySection() {
   const { tenantRow, subsKeyRow, refreshProfile } = useTenant();
