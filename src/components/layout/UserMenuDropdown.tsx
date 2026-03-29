@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, LogIn, LogOut, UserRound } from "lucide-react";
+import { Building2, ChevronDown, LogIn, LogOut, UserRound } from "lucide-react";
 import {
   POS_DEMO_TENANT_NAME,
   POS_DEMO_USER_NAME,
@@ -115,6 +115,20 @@ export default function UserMenuDropdown() {
           </div>
 
           <div className="p-2 space-y-1">
+            {profile?.is_super_admin ? null : (
+              <Link
+                to="/pos/account"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-neutral-800 transition hover:bg-neutral-100"
+              >
+                <Building2
+                  className="h-4 w-4 shrink-0 text-neutral-500"
+                  aria-hidden
+                />
+                Akun outlet
+              </Link>
+            )}
             <button
               type="button"
               role="menuitem"

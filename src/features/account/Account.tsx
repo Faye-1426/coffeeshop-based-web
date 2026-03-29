@@ -8,7 +8,7 @@ export default function Account() {
   const { isSupabase, profile } = useTenant();
 
   if (isSupabase && profile) {
-    if (profile.role_id === 0 && profile.tenant_id === null) {
+    if (profile.is_super_admin) {
       return <SuperAdminAccountView />;
     }
     return <CafeAdminAccountNotice liveMode />;

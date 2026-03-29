@@ -1,6 +1,6 @@
 # Verifikasi SQL (manual)
 
-Jalankan setelah migrasi `20260326120000_warcoop_init.sql` diterapkan.
+Jalankan setelah migrasi `migrations-v4-29032026.sql` diterapkan.
 
 ## 1. Role ter-seed
 

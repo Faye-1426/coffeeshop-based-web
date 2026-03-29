@@ -7,7 +7,6 @@ import {
   Package,
   Receipt,
   Tags,
-  User,
 } from "lucide-react";
 import UserMenuDropdown from "./UserMenuDropdown";
 import { useTenant } from "../../lib/supabase/TenantContext";
@@ -19,12 +18,6 @@ const links = [
   { to: "/pos/orders", label: "Orders", end: false, Icon: ClipboardList },
   { to: "/pos/transactions", label: "Transactions", end: false, Icon: Receipt },
   { to: "/pos/outstanding", label: "Outstanding", end: false, Icon: CircleAlert },
-  {
-    to: "/pos/account",
-    label: "Account",
-    end: false,
-    Icon: User,
-  },
 ] as const;
 
 function linkClass(isActive: boolean): string {

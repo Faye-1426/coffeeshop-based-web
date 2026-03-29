@@ -17,10 +17,7 @@ export default function SuperAdminAccountView() {
   const [statsErr, setStatsErr] = useState<string | null>(null);
 
   const liveSuper =
-    isSupabaseConfigured() &&
-    isSupabase &&
-    profile?.role_id === 0 &&
-    profile.tenant_id === null;
+    isSupabaseConfigured() && isSupabase && Boolean(profile?.is_super_admin);
 
   useEffect(() => {
     if (!liveSuper) return;
@@ -114,6 +111,12 @@ export default function SuperAdminAccountView() {
                       : "—"}
                   </strong>
                 </li>
+                <li>
+                  Subscriber (key aktif):{" "}
+                  <strong>
+                    {String(stats.active_subscriber_tenants ?? "—")}
+                  </strong>
+                </li>
               </ul>
             ) : (
               <p className="text-neutral-600">Memuat…</p>
@@ -134,6 +137,14 @@ export default function SuperAdminAccountView() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
+          {liveSuper ? (
+            <Link
+              to="/pos/super/dashboard"
+              className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600/25"
+            >
+              Buka Super Dashboard
+            </Link>
+          ) : null}
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-bold text-neutral-900 transition hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-red-600/25"

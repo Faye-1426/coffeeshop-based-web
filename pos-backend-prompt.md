@@ -62,7 +62,7 @@ Buatkan **skema database PostgreSQL lengkap** yang mendukung:
 
 ### `tenants`
 
-- `id` (PK)
+- `id` (PK, disarankan **UUID** untuk keamanan multi-tenant dan konsistensi dengan Supabase)
 - `name`
 - `slug`
 - `sub_status` (active / expired)
@@ -138,12 +138,12 @@ Buatkan **skema database PostgreSQL lengkap** yang mendukung:
 
 - `id`
 - `tenant_id`
-- `order_id`
+- `order_id` (FK → `orders`, **nullable** untuk fleksibilitas transaksi tanpa order di masa depan; pada alur penutupan order dari POS, **wajib diisi** mengacu ke order yang diselesaikan)
 - `payment_method` (cash, qris, bon)
 - `amount_paid`
-- `change_amount` (0 jika cashless / bon)
+- `change_amount` (0 jika non-tunai atau tidak ada kembalian)
 - `customer_name` (nullable)
-- `status` (paid, unpaid)
+- `status` (paid, unpaid) — **sumber kebenaran**; `is_paid` dapat diselaraskan lewat trigger/generated column agar tidak drift
 - `is_paid` (derived dari `status` untuk backward compatibility; opsional)
 - `created_at`
 
@@ -157,6 +157,31 @@ Buatkan **skema database PostgreSQL lengkap** yang mendukung:
 - `amount`
 - `due_date`
 - `transaction_id` (FK → `transactions.id`)
+
+---
+
+## 💳 Alur transaksi POS & pembayaran (MVP tanpa payment gateway)
+
+Scope MVP **tidak** mencakup integrasi payment gateway (Midtrans, Xendit, dll.). Pencatatan pembayaran dilakukan **manual** sesuai metode di bawah.
+
+### Alur status order
+
+- `pending` → `preparing` → `served` → `completed`
+
+### Penutupan order harus melalui bukti pembayaran
+
+- **Jangan** men-set `orders.status = completed` hanya dengan tombol “selesai” tanpa jejak pembayaran.
+- Alur yang disarankan (**alur kasir terpisah**): setelah order berstatus `served`, kasir membuka **UI pembayaran** (modal/screen), mengisi metode dan nominal, lalu sistem:
+  1. **INSERT** ke `transactions` (dengan `order_id` terisi untuk order tersebut).
+  2. Jika metode **BON / piutang**: transaksi dicatat `status = unpaid`, lalu **INSERT** ke `outstanding` (tautkan `transaction_id`, `due_date`, `amount`, `customer_name` sesuai kebutuhan).
+  3. Setelah transaksi (dan outstanding jika ada) sukses, **UPDATE** `orders.status` ke `completed`.
+
+Urutan konsisten: **transaksi dulu**, baru order `completed`.
+
+### Pemetaan metode (referensi)
+
+- **Tunai / QRIS**: umumnya `status = paid` pada `transactions`; `change_amount` relevan untuk tunai.
+- **BON**: `status = unpaid` pada `transactions` + baris `outstanding` untuk piutang.
 
 ---
 
@@ -177,6 +202,16 @@ Buatkan **skema database PostgreSQL lengkap** yang mendukung:
 
 ---
 
+### 🔑 RBAC — nuansa per tabel (pelengkap policy)
+
+Tanpa menyalin seluruh SQL di sini, desain policy perlu membedakan **Owner / Manager / Kasir** secara granular (bukan hanya filter tenant):
+
+- **`categories` / `products`**: create/update/delete mengikuti aturan bisnis (umumnya **Owner & Manager** mengelola master data; **Kasir** tidak mengubah kategori/produk — selaras kebijakan RLS aktual di migrasi).
+- **`orders` / `order_items` / `transactions`**: **Kasir** dapat membuat/memperbarui sesuai alur POS (termasuk mencatat pembayaran).
+- **`outstanding`**: insert/update/delete mengikuti peran (mis. pencatatan BON saat checkout dapat melibatkan **Kasir** — selaras migrasi tambahan jika ada, contoh: `supabase/migrations/*outstanding*`.)
+
+---
+
 ### ⚡ Trigger Otomatis (Auto Profile)
 
 - Saat ada user baru di `auth.users`
@@ -184,13 +219,14 @@ Buatkan **skema database PostgreSQL lengkap** yang mendukung:
 
 ---
 
-### 📊 Global Revenue View
+### 📊 Global Revenue & agregat Super Admin
 
-Buat **View khusus untuk Super Admin** yang berisi:
+- Buat **View** atau **RPC `SECURITY DEFINER`** yang berisi metrik untuk Super Admin, mis.:
+  - Total Tenant
+  - Total Transaksi Global (paid)
+  - Total Revenue Global
 
-- Total Tenant
-- Total Transaksi Global
-- Total Revenue Global
+**Catatan keamanan:** RPC terpusat untuk agregat lintas tenant dapat lebih aman daripada hanya mengandalkan view publik; pastikan hanya **Super Admin** yang boleh mengeksekusi (cek `profiles` di dalam fungsi).
 
 ---
 
@@ -201,6 +237,35 @@ Buat **View khusus untuk Super Admin** yang berisi:
   - Otomatis mengurangi `products.stock_units` untuk tenant yang sama (`order_items.tenant_id = products.tenant_id`)
   - Pastikan pengurangan memakai `order_items.quantity` (bukan total harga)
 - **Low stock** hanya indikator UI/bisnis: jangan simpan threshold di `products` kecuali nanti ada kebutuhan eksplisit; cukup kurangi `stock_units` secara akurat, lalu aplikasi yang menentukan kapan tampil peringatan.
+
+---
+
+### 🔄 Sinkron `is_paid` dengan `status` (transaksi)
+
+- Pilih **satu sumber kebenaran** (`status`); selaraskan `is_paid` lewat trigger atau generated column agar tidak drift.
+
+---
+
+## 🌐 Integrasi klien & lingkungan Supabase
+
+- **Supabase Auth** (`auth.users`) dipasangkan dengan **`profiles`** (trigger auto-profile setelah registrasi).
+- **Variabel lingkungan klien (Vite)**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — hanya **anon key** di bundle browser.
+- **Service role key** hanya untuk server/CI/skrip admin; **jangan** memasukkan ke prefix `VITE_*` atau ke repo publik.
+- **Migrasi** disimpan berurutan di folder `supabase/migrations/` (disiplin semver/nama file untuk tim).
+
+---
+
+## 👤 Operasional & onboarding
+
+- User baru: dapat memperoleh baris **`profiles`** otomatis dengan default (mis. peran kasir, `tenant_id` null) sampai **admin** menetapkan `tenant_id` dan `role_id` (SQL atau tooling internal).
+- **Konfirmasi email (Supabase Auth)** bersifat **opsional per project**. Di dashboard Supabase (Authentication → Providers → Email), opsi **Confirm email** dapat **dimatikan**; jika dimatikan, pengguna boleh login tanpa klik link verifikasi dan error **"Email not confirmed"** tidak berlaku. **Validasi / wajib konfirmasi email tidak perlu dijadikan asumsi tetap** dalam dokumen ini — tim dapat memilih mode dev/staging tanpa konfirmasi; untuk production, pertimbangkan keamanan vs UX secara terpisah (bukan bagian DDL).
+
+---
+
+## 🏷️ Identitas & kode tampilan
+
+- Gunakan **UUID** sebagai PK publik untuk entitas utama (`tenants`, `categories`, `products`, `orders`, `transactions`, …) agar aman di multi-tenant dan selaras Supabase.
+- Kode ramah manusia (mis. `ORD-XXXXXXXX`) dapat **diderivasi di UI** dari UUID (prefix + potongan karakter), tanpa wajib menambah kolom `code` di MVP kecuali ada kebutuhan eksplisit nanti.
 
 ---
 
@@ -219,6 +284,7 @@ Buat **View khusus untuk Super Admin** yang berisi:
 - Policy untuk:
   - Super Admin (bypass)
   - Tenant-based access
+  - **Granular** per operasi (INSERT/UPDATE/DELETE) sesuai Owner / Manager / Kasir di tabel relevan
 
 ---
 
@@ -226,6 +292,7 @@ Buat **View khusus untuk Super Admin** yang berisi:
 
 - Auto-create profile saat user baru
 - Auto-reduce stock saat order_items insert
+- (Opsional) sinkron `is_paid` ↔ `status` pada `transactions`
 
 ---
 
@@ -233,6 +300,7 @@ Buat **View khusus untuk Super Admin** yang berisi:
 
 - Query untuk Super Admin melihat:
   - Total revenue semua warkop
+- (Opsional) Contoh pemanggilan RPC agregat global jika dipakai
 
 ---
 

@@ -40,16 +40,31 @@ export default function Login() {
         if (uid) {
           const { data: pr } = await sb
             .from("profiles")
-            .select("role_id, tenant_id")
+            .select("is_super_admin")
             .eq("id", uid)
             .maybeSingle();
-          if (pr?.role_id === 0 && pr.tenant_id === null) {
+          if (pr?.is_super_admin) {
             writePosRole("super");
           } else {
             writePosRole("cafe");
           }
         }
         await refreshProfile();
+        const {
+          data: { session: sess2 },
+        } = await sb.auth.getSession();
+        const uid2 = sess2?.user?.id;
+        if (uid2) {
+          const { data: pr2 } = await sb
+            .from("profiles")
+            .select("is_super_admin")
+            .eq("id", uid2)
+            .maybeSingle();
+          if (pr2?.is_super_admin) {
+            navigate("/pos/super/dashboard", { replace: true });
+            return;
+          }
+        }
         navigate("/pos", { replace: true });
       } finally {
         setBusy(false);

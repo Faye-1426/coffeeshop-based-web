@@ -1,5 +1,8 @@
 -- Optional: jalankan manual setelah migrasi untuk data lokal/staging saja.
 -- Jangan commit secret atau data production ke repo.
+--
+-- Setelah migrasi V4, contoh Subscription Key demo (plaintext di kolom subs_key.plain_key):
+--   warcoop-demo-subs-key
 
 -- Contoh tenant demo (dapatkan UUID setelah insert untuk mengaitkan profil staff):
 -- INSERT INTO public.tenants (name, slug) VALUES ('Warcoop Demo', 'warcoop-demo') RETURNING id;

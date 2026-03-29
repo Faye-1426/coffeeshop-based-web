@@ -18,3 +18,14 @@ export function formatTxLabel(id: string): string {
   }
   return id;
 }
+
+export function formatUuidShort(id: string, labelPrefix: string): string {
+  if (isUuidLike(id)) {
+    return `${labelPrefix}-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  }
+  return id;
+}
+
+export function formatTenantShortId(id: string): string {
+  return formatUuidShort(id, "TNT");
+}

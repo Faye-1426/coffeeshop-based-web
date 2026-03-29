@@ -2,7 +2,7 @@
 
 ## Isi folder
 
-- `migrations/` — skema PostgreSQL, RLS, trigger, fungsi agregat super admin, seed roles.
+- `migrations/` — skema PostgreSQL, RLS, trigger, fungsi agregat super admin, seed roles (file gabungan: `migrations-v4-29032026.sql`).
 - `seed.sql` — contoh SQL manual (tenant / assign profil); tidak dijalankan otomatis oleh migrasi.
 - `config.toml` — placeholder `project_id` untuk Supabase CLI (`supabase link`).
 
@@ -12,7 +12,7 @@
 2. Salin URL project dan **anon key** ke `.env` lokal (lihat root `.env.example`):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-3. Di **SQL Editor**, jalankan isi file `migrations/20260326120000_warcoop_init.sql` sekali (atau pakai CLI `supabase db push` jika sudah `supabase link`).
+3. Di **SQL Editor**, jalankan isi file `migrations/migrations-v4-29032026.sql` sekali (atau pakai CLI `supabase db push` jika sudah `supabase link`).
 4. Buat tenant pertama dan assign user ke tenant (lihat `seed.sql` / `VERIFY.md`).
 
 ## Catatan keamanan
