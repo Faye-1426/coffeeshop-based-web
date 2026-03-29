@@ -2,14 +2,14 @@ import { create } from "zustand";
 import { posCategoriesSeed, posProductsSeed } from "../../../data/posDummyData";
 import type { PosCategory, PosProduct } from "../../../types/pos";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import { requireRemoteTenantId } from "../../../lib/supabase/remoteTenant";
+import { requireRemoteTenantId } from "../../../features/tenants/lib/remoteTenant";
 import { queryClient } from "../../../lib/queryClient";
-import { posQueryKeys } from "../../../lib/posQueryKeys";
+import { posQueryKeys } from "../../../lib/keys/posQueryKeys";
 import {
   sbDeleteCategory,
   sbInsertCategory,
   sbUpdateCategory,
-} from "../../../lib/posSupabaseData";
+} from "../../../lib/supabase/posSupabaseData";
 
 type CategoriesState = {
   categories: PosCategory[];

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { sbRpcGlobalStats } from "../lib/posSupabaseData";
+import { sbRpcGlobalStats } from "../lib/supabase/posSupabaseData";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import {
   sbFetchOwnerTenant,
@@ -10,9 +10,9 @@ import {
   sbFetchTenantById,
   sbFetchTenantsForSuper,
   sbRpcSuperDashboardSummary,
-} from "../lib/superAdminData";
-import { superQueryKeys } from "../lib/superQueryKeys";
-import { useTenant } from "../lib/supabase/TenantContext";
+} from "../lib/supabase/superAdminData";
+import { superQueryKeys } from "../lib/keys/superQueryKeys";
+import { useTenant } from "../features/tenants/context/TenantContext";
 
 function useSuperAdminEnabled() {
   const { isSupabase, isSuperAdmin } = useTenant();

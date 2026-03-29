@@ -1,6 +1,6 @@
-import { isSupabaseConfigured } from "./supabaseClient";
-import { queryClient } from "./queryClient";
-import { posQueryKeys } from "./posQueryKeys";
+import { isSupabaseConfigured } from "../lib/supabaseClient";
+import { queryClient } from "../lib/queryClient";
+import { posQueryKeys } from "../lib/keys/posQueryKeys";
 import { useCategoriesStore } from "../features/categories/store/categoriesStore";
 import { useProductsStore } from "../features/products/store/productsStore";
 import { useOrdersStore } from "../features/orders/store/ordersStore";

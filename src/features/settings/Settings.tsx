@@ -6,14 +6,14 @@ import Button from "../../components/ui/Button";
 import {
   sbUpdatePlatformSettings,
   sbUpdateTenant,
-} from "../../lib/superAdminData";
-import { superQueryKeys } from "../../lib/superQueryKeys";
+} from "../../lib/supabase/superAdminData";
+import { superQueryKeys } from "../../lib/keys/superQueryKeys";
 import {
   useSuperOwnerTenantQuery,
   useSuperPlatformSettingsQuery,
 } from "../../hooks/useSuperAdminQueries";
 
-export default function SuperSettings() {
+export default function Settings() {
   const queryClient = useQueryClient();
   const platformQuery = useSuperPlatformSettingsQuery();
   const ownerQuery = useSuperOwnerTenantQuery();

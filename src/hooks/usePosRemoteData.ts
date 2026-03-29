@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
-import { posQueryKeys } from "../lib/posQueryKeys";
+import { posQueryKeys } from "../lib/keys/posQueryKeys";
 import {
   sbFetchCategories,
   sbFetchDashboardSnapshot,
@@ -8,8 +8,8 @@ import {
   sbFetchOutstanding,
   sbFetchProducts,
   sbFetchTransactions,
-} from "../lib/posSupabaseData";
-import { useTenant } from "../lib/supabase/TenantContext";
+} from "../lib/supabase/posSupabaseData";
+import { useTenant } from "../features/tenants/context/TenantContext";
 
 function useAuthUid() {
   const { session } = useTenant();

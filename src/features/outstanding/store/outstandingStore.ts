@@ -3,8 +3,8 @@ import { posOutstandingSeed } from "../../../data/posDummyData";
 import type { PosOutstanding } from "../../../types/pos";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { queryClient } from "../../../lib/queryClient";
-import { posQueryKeys } from "../../../lib/posQueryKeys";
-import { sbMarkOutstandingPaid } from "../../../lib/posSupabaseData";
+import { posQueryKeys } from "../../../lib/keys/posQueryKeys";
+import { sbMarkOutstandingPaid } from "../../../lib/supabase/posSupabaseData";
 
 type OutstandingState = {
   rows: PosOutstanding[];

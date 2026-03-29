@@ -13,7 +13,7 @@ import LowStockCard from "./components/LowStockCard";
 import SalesTrendPlaceholder from "./components/SalesTrendPlaceholder";
 import RecentTransactions from "./components/RecentTransactions";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
-import type { DashboardSnapshot } from "../../lib/posSupabaseData";
+import type { DashboardSnapshot } from "../../lib/supabase/posSupabaseData";
 import { usePosDashboardSnapshotQuery } from "../../hooks/usePosRemoteData";
 
 const emptySnapshot: DashboardSnapshot = {

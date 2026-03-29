@@ -9,14 +9,14 @@ import type {
 } from "../../../types/pos";
 import { nextOrderId } from "../lib/nextOrderId";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import { requireRemoteTenantId } from "../../../lib/supabase/remoteTenant";
+import { requireRemoteTenantId } from "../../../features/tenants/lib/remoteTenant";
 import { queryClient } from "../../../lib/queryClient";
-import { posQueryKeys } from "../../../lib/posQueryKeys";
+import { posQueryKeys } from "../../../lib/keys/posQueryKeys";
 import {
   sbCreateOrder,
   sbPayAndCompleteOrder,
   sbUpdateOrderStatus,
-} from "../../../lib/posSupabaseData";
+} from "../../../lib/supabase/posSupabaseData";
 import { useOutstandingStore } from "../../outstanding/store/outstandingStore";
 import { useTransactionsStore } from "../../transactions/store/transactionsStore";
 

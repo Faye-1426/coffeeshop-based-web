@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Store, UserRound } from "lucide-react";
-import { useTenant } from "../../../lib/supabase/TenantContext";
+import { useTenant } from "../../../features/tenants/context/TenantContext";
 import {
   formatTenantShortId,
   formatUuidShort,

@@ -1,4 +1,4 @@
-import { getSupabase } from "./supabaseClient";
+import { getSupabase } from "../supabaseClient";
 
 export type SuperTenantRow = {
   id: string;
