@@ -1,8 +1,8 @@
-import type { MenuProduct, Badge } from "../types";
+import type { MenuProduct } from "../types";
 import { formatIDR } from "../lib/currency";
 import { useCartStore } from "../lib/cart";
 
-function badgeStyle(badge: Badge): string {
+function badgeStyle(badge: string): string {
   switch (badge) {
     case "Popular":
       return "bg-red-600 text-white";

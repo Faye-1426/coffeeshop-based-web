@@ -1,10 +1,5 @@
-export type CategoryId =
-  | "coffee"
-  | "nonCoffee"
-  | "snacks"
-  | "meals";
-
-export type Badge = "Popular" | "Best Seller" | "New" | "Hot" | "Limited";
+/** Category id from API (UUID) or demo data (string). */
+export type CategoryId = string;
 
 export type MenuCategory = {
   id: CategoryId;
@@ -29,17 +24,17 @@ export type MenuProduct = {
   price: number; // in IDR
   categoryId: CategoryId;
   description?: string;
-  badge?: Badge;
-  imageSrc: string; // data URI (frontend-only)
+  /** Free-text badge from POS or demo labels. */
+  badge?: string;
+  imageSrc: string;
   variantGroups?: VariantGroup[];
 };
 
-export type ProductVariantSelection = Record<string, string>; // groupId -> optionId
+export type ProductVariantSelection = Record<string, string>;
 
 export type CartItem = {
-  id: string; // unique by productId + selection
+  id: string;
   productId: string;
   quantity: number;
   variantSelection: ProductVariantSelection;
 };
-
