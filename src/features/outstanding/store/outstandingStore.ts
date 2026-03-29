@@ -2,30 +2,22 @@ import { create } from "zustand";
 import { posOutstandingSeed } from "../../../data/posDummyData";
 import type { PosOutstanding } from "../../../types/pos";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import {
-  sbFetchOutstanding,
-  sbMarkOutstandingPaid,
-} from "../../../lib/posSupabaseData";
+import { queryClient } from "../../../lib/queryClient";
+import { posQueryKeys } from "../../../lib/posQueryKeys";
+import { sbMarkOutstandingPaid } from "../../../lib/posSupabaseData";
 
 type OutstandingState = {
   rows: PosOutstanding[];
-  markPaid: (id: string) => void | Promise<void>;
-  syncFromRemote: () => Promise<void>;
+  markPaid: (row: PosOutstanding) => void | Promise<void>;
   appendLocal: (row: PosOutstanding) => void;
 };
 
 const useSeed = !isSupabaseConfigured();
 
-export const useOutstandingStore = create<OutstandingState>((set, get) => ({
+export const useOutstandingStore = create<OutstandingState>((set) => ({
   rows: useSeed ? [...posOutstandingSeed] : [],
 
-  syncFromRemote: async () => {
-    if (!isSupabaseConfigured()) return;
-    const rows = await sbFetchOutstanding();
-    set({ rows });
-  },
-
-  markPaid: async (id) => {
+  markPaid: async (row) => {
     if (
       !window.confirm("Tandai sebagai lunas? Transaksi akan di-set paid dan piutang dihapus.")
     ) {
@@ -33,11 +25,9 @@ export const useOutstandingStore = create<OutstandingState>((set, get) => ({
     }
 
     if (isSupabaseConfigured()) {
-      const row = get().rows.find((r) => r.id === id);
-      if (!row) return;
       try {
         await sbMarkOutstandingPaid(row.id, row.transactionId);
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
       } catch (e) {
         window.alert(
           e instanceof Error
@@ -48,7 +38,7 @@ export const useOutstandingStore = create<OutstandingState>((set, get) => ({
       return;
     }
 
-    set((s) => ({ rows: s.rows.filter((r) => r.id !== id) }));
+    set((s) => ({ rows: s.rows.filter((r) => r.id !== row.id) }));
   },
 
   appendLocal: (row) => set((s) => ({ rows: [...s.rows, row] })),

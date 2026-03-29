@@ -10,10 +10,10 @@ import type {
 import { nextOrderId } from "../lib/nextOrderId";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
 import { requireRemoteTenantId } from "../../../lib/supabase/remoteTenant";
+import { queryClient } from "../../../lib/queryClient";
+import { posQueryKeys } from "../../../lib/posQueryKeys";
 import {
   sbCreateOrder,
-  sbFetchOrders,
-  sbFetchProducts,
   sbPayAndCompleteOrder,
   sbUpdateOrderStatus,
 } from "../../../lib/posSupabaseData";
@@ -39,7 +39,6 @@ type OrdersState = {
     payload: CheckoutPaymentPayload,
   ) => void | Promise<void>;
   appendOrder: (draft: Omit<PosOrder, "id" | "createdAt">) => void | Promise<void>;
-  syncFromRemote: () => Promise<void>;
 };
 
 const statusFlow: OrderStatus[] = [
@@ -56,15 +55,6 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
   products: useSeed ? [...posProductsSeed] : [],
   filter: "all",
   drawerOpen: false,
-
-  syncFromRemote: async () => {
-    if (!isSupabaseConfigured()) return;
-    const [orders, products] = await Promise.all([
-      sbFetchOrders(),
-      sbFetchProducts(),
-    ]);
-    set({ orders, products });
-  },
 
   setFilter: (filter) => set({ filter }),
 
@@ -84,7 +74,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     if (isSupabaseConfigured()) {
       try {
         await sbUpdateOrderStatus(o.id, next);
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
       } catch (e) {
         window.alert(
           e instanceof Error ? e.message : "Gagal memperbarui status order.",
@@ -110,9 +100,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
           amountPaid: payload.amountPaid,
           dueDate: payload.dueDate,
         });
-        await get().syncFromRemote();
-        await useTransactionsStore.getState().syncFromRemote();
-        await useOutstandingStore.getState().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
       } catch (e) {
         window.alert(
           e instanceof Error ? e.message : "Gagal mencatat pembayaran.",
@@ -169,7 +157,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     if (isSupabaseConfigured()) {
       try {
         await sbCreateOrder(requireRemoteTenantId(), draft);
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
       } catch (e) {
         window.alert(
           e instanceof Error

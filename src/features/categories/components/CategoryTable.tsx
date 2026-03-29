@@ -1,4 +1,5 @@
 import Card from "../../../components/ui/Card";
+import TableBodyLoadingRow from "../../../components/ui/TableBodyLoadingRow";
 import type { PosCategory } from "../../../types/pos";
 import CategoryActions from "./CategoryActions";
 
@@ -6,10 +7,12 @@ type Row = PosCategory & { count: number };
 
 export default function CategoryTable({
   rows,
+  loading,
   onEdit,
   onDelete,
 }: {
   rows: Row[];
+  loading?: boolean;
   onEdit: (c: PosCategory) => void;
   onDelete: (id: string) => void;
 }) {
@@ -31,7 +34,9 @@ export default function CategoryTable({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {loading ? (
+              <TableBodyLoadingRow colSpan={3} label="Memuat kategori…" />
+            ) : rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={3}

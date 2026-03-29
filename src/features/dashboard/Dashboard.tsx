@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import PageHeader from "../../components/ui/PageHeader";
 import {
   posOrdersSeed,
@@ -13,9 +13,8 @@ import LowStockCard from "./components/LowStockCard";
 import SalesTrendPlaceholder from "./components/SalesTrendPlaceholder";
 import RecentTransactions from "./components/RecentTransactions";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
-import { sbFetchDashboardSnapshot } from "../../lib/posSupabaseData";
 import type { DashboardSnapshot } from "../../lib/posSupabaseData";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import { usePosDashboardSnapshotQuery } from "../../hooks/usePosRemoteData";
 
 const emptySnapshot: DashboardSnapshot = {
   paidTotal: 0,
@@ -26,35 +25,8 @@ const emptySnapshot: DashboardSnapshot = {
 };
 
 export default function Dashboard() {
-  const { session } = useTenant();
   const isDemo = !isSupabaseConfigured();
-  const [remoteSnapshot, setRemoteSnapshot] = useState<DashboardSnapshot | null>(
-    null,
-  );
-  const [remoteFetchDone, setRemoteFetchDone] = useState(false);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !session) {
-      setRemoteSnapshot(null);
-      setRemoteFetchDone(false);
-      return;
-    }
-    setRemoteFetchDone(false);
-    let cancelled = false;
-    void (async () => {
-      try {
-        const snap = await sbFetchDashboardSnapshot();
-        if (!cancelled) setRemoteSnapshot(snap);
-      } catch {
-        if (!cancelled) setRemoteSnapshot(null);
-      } finally {
-        if (!cancelled) setRemoteFetchDone(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.user?.id]);
+  const remoteQuery = usePosDashboardSnapshotQuery();
 
   const demoDisplay = useMemo(
     (): DashboardSnapshot => ({
@@ -73,9 +45,7 @@ export default function Dashboard() {
 
   const display: DashboardSnapshot = isDemo
     ? demoDisplay
-    : !session || !remoteFetchDone
-      ? emptySnapshot
-      : (remoteSnapshot ?? emptySnapshot);
+    : (remoteQuery.data ?? emptySnapshot);
 
   const {
     paidTotal,
@@ -84,6 +54,8 @@ export default function Dashboard() {
     lowStockCount: lowStockTotal,
     recent,
   } = display;
+
+  const remoteLoading = !isDemo && remoteQuery.isPending;
 
   return (
     <div>
@@ -96,16 +68,25 @@ export default function Dashboard() {
         }
       />
 
+      {!isDemo && remoteQuery.isError ? (
+        <p className="text-sm text-red-700 py-2">
+          Gagal memuat ringkasan. Coba muat ulang halaman.
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <RevenueCard amount={paidTotal} />
-        <OrdersCard count={orderCount} />
-        <ActiveOrdersCard count={activeOrders} />
-        <LowStockCard count={lowStockTotal} />
+        <RevenueCard amount={paidTotal} pending={remoteLoading} />
+        <OrdersCard count={orderCount} pending={remoteLoading} />
+        <ActiveOrdersCard count={activeOrders} pending={remoteLoading} />
+        <LowStockCard count={lowStockTotal} pending={remoteLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <SalesTrendPlaceholder />
-        <RecentTransactions transactions={recent} />
+        <RecentTransactions
+          transactions={recent}
+          loading={remoteLoading}
+        />
       </div>
     </div>
   );

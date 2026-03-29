@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Coffee, Mail, Store, User } from "lucide-react";
 import Card from "../../../components/ui/Card";
@@ -7,39 +6,22 @@ import { usePosRole } from "../../../hooks/usePosRole";
 import { POS_DEMO_TENANT_NAME, POS_DEMO_USER_NAME } from "../data";
 import { useTenant } from "../../../lib/supabase/TenantContext";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import { sbRpcGlobalStats } from "../../../lib/posSupabaseData";
+import { useSuperGlobalStatsQuery } from "../../../hooks/useSuperAdminQueries";
 import { formatIDR } from "../../../lib/formatCurrency";
 
 export default function SuperAdminAccountView() {
   const { setRole } = usePosRole();
   const { isSupabase, user, profile, tenantName } = useTenant();
-  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
-  const [statsErr, setStatsErr] = useState<string | null>(null);
+  const statsQuery = useSuperGlobalStatsQuery();
+  const stats = statsQuery.data ?? null;
+  const statsErr = statsQuery.isError
+    ? statsQuery.error instanceof Error
+      ? statsQuery.error.message
+      : "Gagal memuat statistik."
+    : null;
 
   const liveSuper =
     isSupabaseConfigured() && isSupabase && Boolean(profile?.is_super_admin);
-
-  useEffect(() => {
-    if (!liveSuper) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const s = await sbRpcGlobalStats();
-        if (!cancelled) {
-          setStats(s);
-          setStatsErr(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setStats(null);
-          setStatsErr(e instanceof Error ? e.message : "Gagal memuat statistik.");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [liveSuper]);
 
   const displayName = liveSuper
     ? profile?.full_name || user?.email || "Super admin"
@@ -118,8 +100,10 @@ export default function SuperAdminAccountView() {
                   </strong>
                 </li>
               </ul>
-            ) : (
+            ) : statsQuery.isPending ? (
               <p className="text-neutral-600">Memuat…</p>
+            ) : (
+              <p className="text-neutral-600">—</p>
             )}
           </div>
         ) : null}

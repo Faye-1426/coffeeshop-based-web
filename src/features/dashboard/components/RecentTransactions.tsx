@@ -1,19 +1,25 @@
 import Card from "../../../components/ui/Card";
 import Badge from "../../../components/ui/Badge";
+import ListLoadingStatus from "../../../components/ui/ListLoadingStatus";
 import { formatIDR } from "../../../lib/formatCurrency";
 import { formatTxLabel } from "../../../lib/formatPosIds";
 import type { PosTransaction } from "../../../types/pos";
 
 export default function RecentTransactions({
   transactions,
+  loading,
 }: {
   transactions: PosTransaction[];
+  loading?: boolean;
 }) {
   return (
     <Card className="p-5">
       <div className="font-extrabold text-neutral-900 mb-4">
         Recent transactions
       </div>
+      {loading ? (
+        <ListLoadingStatus label="Memuat transaksi terbaru…" variant="inline" />
+      ) : (
       <ul className="space-y-3">
         {transactions.map((tx) => (
           <li
@@ -40,6 +46,7 @@ export default function RecentTransactions({
           </li>
         ))}
       </ul>
+      )}
     </Card>
   );
 }

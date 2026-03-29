@@ -28,6 +28,34 @@ export type PlatformSettingsRow = {
   support_email: string | null;
 };
 
+export type SuperRecentTxRow = {
+  id: string;
+  amount_paid: number;
+  status: string;
+  created_at: string;
+  tenant_id: string;
+};
+
+export async function sbFetchSuperRecentTransactions(): Promise<
+  SuperRecentTxRow[]
+> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const { data: txData, error: txErr } = await sb
+    .from("transactions")
+    .select("id, amount_paid, status, created_at, tenant_id")
+    .order("created_at", { ascending: false })
+    .limit(12);
+  if (txErr) throw txErr;
+  return (txData ?? []).map((r) => ({
+    id: r.id,
+    amount_paid: Number(r.amount_paid),
+    status: String(r.status),
+    created_at: String(r.created_at),
+    tenant_id: String(r.tenant_id),
+  }));
+}
+
 export async function sbRpcSuperDashboardSummary(): Promise<
   Record<string, unknown>
 > {
