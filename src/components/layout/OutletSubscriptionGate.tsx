@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { KeyRound } from "lucide-react";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import { useTenant } from "../../features/tenants/context/TenantContext";
 
 /**
  * Blocks outlet POS routes until subscription key is active (or owner tenant).

@@ -8,9 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { getSupabase, isSupabaseConfigured } from "../supabaseClient";
-import { resetPosStoresAfterSignOut } from "../posStoresReset";
-import { setRemoteTenantId } from "./remoteTenant";
+import { getSupabase, isSupabaseConfigured } from "../../../lib/supabaseClient";
+import { resetPosStoresAfterSignOut } from "../../../store/posStoresReset";
+import { setRemoteTenantId } from "../lib/remoteTenant";
 
 export type PosProfile = {
   tenant_id: string | null;
@@ -288,6 +288,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Paired with `TenantProvider`; co-located hook is intentional for this feature context. */
+// eslint-disable-next-line react-refresh/only-export-components -- context + hook pattern
 export function useTenant(): TenantContextValue {
   const ctx = useContext(TenantContext);
   if (!ctx) {

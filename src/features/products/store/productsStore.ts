@@ -5,14 +5,14 @@ import {
 } from "../../../data/posDummyData";
 import type { PosCategory, PosProduct } from "../../../types/pos";
 import { isSupabaseConfigured } from "../../../lib/supabaseClient";
-import { requireRemoteTenantId } from "../../../lib/supabase/remoteTenant";
+import { requireRemoteTenantId } from "../../../features/tenants/lib/remoteTenant";
+import { queryClient } from "../../../lib/queryClient";
+import { posQueryKeys } from "../../../lib/keys/posQueryKeys";
 import {
   sbDeleteProduct,
-  sbFetchCategories,
-  sbFetchProducts,
   sbInsertProduct,
   sbUpdateProduct,
-} from "../../../lib/posSupabaseData";
+} from "../../../lib/supabase/posSupabaseData";
 
 export type ProductFormState = {
   name: string;
@@ -28,13 +28,12 @@ type ProductsState = {
   modalOpen: boolean;
   editing: PosProduct | null;
   form: ProductFormState;
-  openCreate: () => void;
+  openCreate: (categories: PosCategory[]) => void;
   openEdit: (p: PosProduct) => void;
   setForm: (updater: (f: ProductFormState) => ProductFormState) => void;
   closeModal: () => void;
   save: () => void | Promise<void>;
   remove: (id: string) => void | Promise<void>;
-  syncFromRemote: () => Promise<void>;
 };
 
 const emptyForm = (categoryId: string): ProductFormState => ({
@@ -54,24 +53,10 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   editing: null,
   form: emptyForm(useSeed ? posCategoriesSeed[0]?.id ?? "" : ""),
 
-  syncFromRemote: async () => {
-    if (!isSupabaseConfigured()) return;
-    const [categories, products] = await Promise.all([
-      sbFetchCategories(),
-      sbFetchProducts(),
-    ]);
-    set({
-      categories,
-      products,
-      form: emptyForm(categories[0]?.id ?? get().form.categoryId),
-    });
-  },
-
-  openCreate: () => {
-    const cats = get().categories;
+  openCreate: (categories) => {
     set({
       editing: null,
-      form: emptyForm(cats[0]?.id ?? ""),
+      form: emptyForm(categories[0]?.id ?? ""),
       modalOpen: true,
     });
   },
@@ -124,7 +109,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
             badge,
           });
         }
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
         set({ modalOpen: false });
       } catch (e) {
         window.alert(e instanceof Error ? e.message : "Gagal menyimpan produk.");
@@ -174,7 +159,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     if (isSupabaseConfigured()) {
       try {
         await sbDeleteProduct(id);
-        await get().syncFromRemote();
+        await queryClient.invalidateQueries({ queryKey: posQueryKeys.root });
       } catch (e) {
         window.alert(e instanceof Error ? e.message : "Gagal menghapus produk.");
       }

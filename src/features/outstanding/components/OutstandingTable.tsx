@@ -1,14 +1,17 @@
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
+import TableBodyLoadingRow from "../../../components/ui/TableBodyLoadingRow";
 import { formatIDR } from "../../../lib/formatCurrency";
 import type { PosOutstanding } from "../../../types/pos";
 
 export default function OutstandingTable({
   rows,
+  loading,
   onMarkPaid,
 }: {
   rows: PosOutstanding[];
-  onMarkPaid: (id: string) => void;
+  loading?: boolean;
+  onMarkPaid: (row: PosOutstanding) => void;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -24,7 +27,9 @@ export default function OutstandingTable({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {loading ? (
+              <TableBodyLoadingRow colSpan={5} label="Memuat piutang…" />
+            ) : rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={5}
@@ -51,7 +56,7 @@ export default function OutstandingTable({
                     <Button
                       variant="primary"
                       className="text-xs! py-1.5!"
-                      onClick={() => onMarkPaid(r.id)}
+                      onClick={() => onMarkPaid(r)}
                     >
                       Mark as Paid
                     </Button>

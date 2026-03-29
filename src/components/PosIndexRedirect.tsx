@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useTenant } from "../lib/supabase/TenantContext";
+import { useTenant } from "../features/tenants/context/TenantContext";
 import Dashboard from "../features/dashboard/Dashboard";
 
 export default function PosIndexRedirect() {

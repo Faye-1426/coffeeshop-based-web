@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { writePosRole } from "../../lib/posDemoSession";
 import { isSupabaseConfigured, getSupabase } from "../../lib/supabaseClient";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import { useTenant } from "../../features/tenants/context/TenantContext";
 import AuthPageShell from "./components/AuthPageShell";
 
 export default function Login() {

@@ -9,8 +9,8 @@ import {
   Settings,
 } from "lucide-react";
 import UserMenuDropdown from "./UserMenuDropdown";
-import { useTenant } from "../../lib/supabase/TenantContext";
-import { sbFetchTenantsForSuper, type SuperTenantRow } from "../../lib/superAdminData";
+import { useTenant } from "../../features/tenants/context/TenantContext";
+import { useSuperTenantsQuery } from "../../hooks/useSuperAdminQueries";
 
 const links = [
   { to: "/pos/super/dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -31,26 +31,10 @@ function linkClass(isActive: boolean): string {
 export default function SuperAdminTopNavbar() {
   const { tenantName } = useTenant();
   const navigate = useNavigate();
-  const [tenants, setTenants] = useState<SuperTenantRow[]>([]);
+  const tenantsQuery = useSuperTenantsQuery();
+  const tenants = (tenantsQuery.data ?? []).filter((t) => !t.is_owner);
   const [tenantMenuOpen, setTenantMenuOpen] = useState(false);
   const tenantWrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await sbFetchTenantsForSuper();
-        if (!cancelled) {
-          setTenants(list.filter((t) => !t.is_owner));
-        }
-      } catch {
-        if (!cancelled) setTenants([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!tenantMenuOpen) return;
@@ -116,7 +100,9 @@ export default function SuperAdminTopNavbar() {
                 <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-neutral-500">
                   Buka ringkasan outlet
                 </div>
-                {tenants.length === 0 ? (
+                {tenantsQuery.isPending ? (
+                  <p className="px-3 py-2 text-sm text-neutral-500">Memuat…</p>
+                ) : tenants.length === 0 ? (
                   <p className="px-3 py-2 text-sm text-neutral-500">Tidak ada outlet.</p>
                 ) : (
                   tenants.map((t) => (

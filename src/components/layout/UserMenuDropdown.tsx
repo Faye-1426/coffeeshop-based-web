@@ -6,8 +6,8 @@ import {
   POS_DEMO_USER_NAME,
 } from "../../lib/posDemoSession";
 import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
-import { resetPosStoresAfterSignOut } from "../../lib/posStoresReset";
-import { useTenant } from "../../lib/supabase/TenantContext";
+import { resetPosStoresAfterSignOut } from "../../store/posStoresReset";
+import { useTenant } from "../../features/tenants/context/TenantContext";
 
 export default function UserMenuDropdown() {
   const [open, setOpen] = useState(false);
