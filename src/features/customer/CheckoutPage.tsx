@@ -1,10 +1,24 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { menuProducts } from "./data/menuData";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import type { CartItem, MenuProduct } from "./types";
-import { getUnitPrice, useCartStore, getCartCount } from "./lib/cart";
+import { getUnitPrice, useCartStore } from "./lib/cart";
+import { menuProducts } from "./data/menuData";
+import { isSupabaseConfigured } from "../../lib/supabaseClient";
+import { customerQueryKeys } from "../../lib/keys/customerQueryKeys";
+import {
+  customerMenuPayloadToPriceMap,
+  customerMenuPayloadToStockMap,
+  sbCustomerFetchMenu,
+} from "../../lib/supabase/customerPublicData";
+import { mapCustomerMenuToUi } from "./lib/catalogFromRemote";
+import { storeKeyToTenantSlug } from "./lib/storePath";
+import {
+  useCustomerCreateOrderMutation,
+  useCustomerMenuQuery,
+} from "../../hooks/useCustomerRemoteData";
 
-function findProduct(productId: string): MenuProduct | undefined {
+function findProductLocal(productId: string): MenuProduct | undefined {
   return menuProducts.find((p) => p.id === productId);
 }
 
@@ -19,25 +33,46 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function CheckoutPage() {
+  const { storeKey } = useParams<{ storeKey: string }>();
+  const tenantSlugDb = storeKey ? storeKeyToTenantSlug(storeKey) : null;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { items, clear } = useCartStore();
+  const createOrder = useCustomerCreateOrderMutation();
+  const menuQuery = useCustomerMenuQuery(tenantSlugDb);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [payment, setPayment] = useState<"cash" | "card">("cash");
   const [touched, setTouched] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [priceCheckPending, setPriceCheckPending] = useState(false);
+
+  const useRemote = isSupabaseConfigured() && Boolean(tenantSlugDb);
+
+  const catalogProducts = useMemo(() => {
+    if (!useRemote || !menuQuery.data) {
+      return menuProducts;
+    }
+    return mapCustomerMenuToUi(menuQuery.data).products;
+  }, [useRemote, menuQuery.data]);
 
   const itemsWithProducts = useMemo(() => {
     const list: Array<{ item: CartItem; product: MenuProduct }> = [];
     for (const item of items) {
-      const product = findProduct(item.productId);
+      const product =
+        catalogProducts.find((p) => p.id === item.productId) ??
+        findProductLocal(item.productId);
       if (!product) continue;
       list.push({ item, product });
     }
     return list;
+  }, [items, catalogProducts]);
+
+  const totalCount = useMemo(() => {
+    return items.reduce((sum, i) => sum + i.quantity, 0);
   }, [items]);
 
-  const totalCount = useMemo(() => getCartCount(items), [items]);
   const totalPrice = useMemo(() => {
     return itemsWithProducts.reduce((sum, x) => {
       const unit = getUnitPrice(x.product, x.item.variantSelection);
@@ -51,12 +86,63 @@ export default function CheckoutPage() {
   const nameError = touched && !nameOk;
   const emailError = touched && !emailOk;
 
+  if (!storeKey || !tenantSlugDb) {
+    return (
+      <div className="max-w-3xl mx-auto py-10 text-center text-sm text-neutral-600">
+        Invalid store URL.
+      </div>
+    );
+  }
+
+  async function validateCartAgainstServer(): Promise<boolean> {
+    if (!useRemote || !tenantSlugDb) return true;
+    setValidationError(null);
+    setPriceCheckPending(true);
+    try {
+      const payload = await queryClient.fetchQuery({
+        queryKey: customerQueryKeys.menu(tenantSlugDb),
+        queryFn: () => sbCustomerFetchMenu(tenantSlugDb),
+      });
+      const prices = customerMenuPayloadToPriceMap(payload);
+      const stocks = customerMenuPayloadToStockMap(payload);
+      for (const { item, product } of itemsWithProducts) {
+        const serverPrice = prices.get(product.id);
+        const stock = stocks.get(product.id);
+        if (serverPrice === undefined) {
+          setValidationError(
+            `Product "${product.name}" is no longer available.`,
+          );
+          return false;
+        }
+        const unit = getUnitPrice(product, item.variantSelection);
+        if (Math.abs(unit - serverPrice) > 0.01) {
+          setValidationError(
+            `Price changed for "${product.name}". Refresh and review your cart.`,
+          );
+          return false;
+        }
+        if (stock !== undefined && stock < item.quantity) {
+          setValidationError(`Not enough stock for "${product.name}".`);
+          return false;
+        }
+      }
+      return true;
+    } catch (e) {
+      setValidationError(
+        e instanceof Error ? e.message : "Could not validate cart.",
+      );
+      return false;
+    } finally {
+      setPriceCheckPending(false);
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(`/${storeKey}`)}
           className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-bold hover:bg-neutral-50 transition"
         >
           ← Back to menu
@@ -68,13 +154,19 @@ export default function CheckoutPage() {
       </div>
 
       <div className="mt-6 rounded-3xl border border-neutral-200 bg-white/70 p-5 sm:p-6">
-        <h1 className="font-extrabold text-2xl text-neutral-900">
-          Checkout
-        </h1>
+        <h1 className="font-extrabold text-2xl text-neutral-900">Checkout</h1>
 
         <div className="mt-2 text-sm text-neutral-600">
-          Dummy checkout UI (no backend). Place order to clear cart.
+          {useRemote
+            ? "Order is sent to the outlet (pending). Prices are verified on submit."
+            : "Demo mode (no Supabase): order is not saved."}
         </div>
+
+        {validationError ? (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {validationError}
+          </div>
+        ) : null}
 
         <div className="mt-6 flex flex-col gap-4">
           {itemsWithProducts.length === 0 ? (
@@ -87,7 +179,7 @@ export default function CheckoutPage() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() => navigate(`/${storeKey}`)}
                 className="mt-5 rounded-full bg-red-600 text-white px-5 py-2.5 text-sm font-extrabold hover:bg-red-700 transition"
               >
                 Browse menu
@@ -129,10 +221,15 @@ export default function CheckoutPage() {
                       ) : null}
                       <div className="mt-3 flex items-center justify-between gap-4">
                         <div className="text-sm text-neutral-600">
-                          Qty: <span className="font-extrabold">{item.quantity}</span>
+                          Qty:{" "}
+                          <span className="font-extrabold">
+                            {item.quantity}
+                          </span>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-neutral-500">Subtotal</div>
+                          <div className="text-xs text-neutral-500">
+                            Subtotal
+                          </div>
                           <div className="font-extrabold text-neutral-900">
                             {formatRp(subtotal)}
                           </div>
@@ -198,7 +295,9 @@ export default function CheckoutPage() {
                 <select
                   required
                   value={payment}
-                  onChange={(e) => setPayment(e.target.value as "cash" | "card")}
+                  onChange={(e) =>
+                    setPayment(e.target.value as "cash" | "card")
+                  }
                   className="mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-600/25"
                 >
                   <option value="cash">Cash</option>
@@ -209,9 +308,13 @@ export default function CheckoutPage() {
 
             <div className="mt-5 flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-extrabold text-neutral-900">Total</div>
+                <div className="text-sm font-extrabold text-neutral-900">
+                  Total
+                </div>
                 <div className="text-xs text-neutral-600">
-                  Includes dummy option price deltas
+                  {useRemote
+                    ? "Verified on place order"
+                    : "Includes option deltas (demo)"}
                 </div>
               </div>
               <div className="text-right">
@@ -225,33 +328,66 @@ export default function CheckoutPage() {
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
-                disabled={!formValid}
-                onClick={() => {
+                disabled={
+                  !formValid || priceCheckPending || createOrder.isPending
+                }
+                onClick={async () => {
                   setTouched(true);
                   if (!formValid) return;
-                  clear();
-                  navigate("/order-success");
+                  const ok = await validateCartAgainstServer();
+                  if (!ok) return;
+                  if (useRemote && tenantSlugDb) {
+                    try {
+                      const lines = itemsWithProducts.map(
+                        ({ item, product }) => ({
+                          product_id: product.id,
+                          quantity: item.quantity,
+                          line_item_name: product.name,
+                        }),
+                      );
+                      const orderId = await createOrder.mutateAsync({
+                        tenantSlugDb,
+                        customerName: name.trim(),
+                        customerEmail: email.trim(),
+                        tableNumber: "Online",
+                        lines,
+                      });
+                      clear();
+                      navigate(`/${storeKey}/order-success`, {
+                        replace: true,
+                        state: { orderId, live: true },
+                      });
+                    } catch (e) {
+                      setValidationError(
+                        e instanceof Error ? e.message : "Order failed",
+                      );
+                    }
+                  } else {
+                    clear();
+                    navigate(`/${storeKey}/order-success`, {
+                      replace: true,
+                      state: { orderId: "demo", live: false },
+                    });
+                  }
                 }}
                 className={[
                   "flex-1 rounded-full py-3 text-sm font-extrabold shadow transition",
-                  formValid
+                  formValid && !priceCheckPending && !createOrder.isPending
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-red-200 text-red-800 cursor-not-allowed",
                 ].join(" ")}
               >
-                Place order
+                {priceCheckPending || createOrder.isPending
+                  ? "Placing…"
+                  : "Place order"}
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() => navigate(`/${storeKey}`)}
                 className="rounded-full border border-neutral-200 bg-white py-3 px-5 text-sm font-extrabold hover:bg-neutral-50 transition"
               >
-                Continue
+                Back to menu
               </button>
-            </div>
-
-            <div className="mt-3 text-[11px] text-neutral-500">
-              Dummy form only: name/email/payment are not sent anywhere.
             </div>
           </div>
         ) : null}
@@ -259,4 +395,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

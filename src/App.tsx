@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import WarcoopMenuPage from "./features/customer/WarcoopMenuPage";
 import CheckoutPage from "./features/customer/CheckoutPage";
 import OrderSuccessPage from "./features/customer/OrderSuccessPage";
+import CustomerRootRedirect from "./features/customer/CustomerRootRedirect";
 import PosLayout from "./components/layout/PosLayout";
 import PosIndexRedirect from "./components/PosIndexRedirect";
 import Category from "./features/categories/Category";
@@ -50,30 +51,20 @@ export default function App() {
           <Route path="super/settings" element={<Settings />} />
         </Route>
 
+        <Route path="/" element={<CustomerRootRedirect />} />
+
         <Route
-          path="/"
+          path="/:storeKey"
           element={
             <CustomerShell>
-              <WarcoopMenuPage />
+              <Outlet />
             </CustomerShell>
           }
-        />
-        <Route
-          path="/checkout"
-          element={
-            <CustomerShell>
-              <CheckoutPage />
-            </CustomerShell>
-          }
-        />
-        <Route
-          path="/order-success"
-          element={
-            <CustomerShell>
-              <OrderSuccessPage />
-            </CustomerShell>
-          }
-        />
+        >
+          <Route index element={<WarcoopMenuPage />} />
+          <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="order-success" element={<OrderSuccessPage />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

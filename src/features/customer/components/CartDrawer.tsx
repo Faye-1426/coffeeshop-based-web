@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCartStore, getCartCount, getUnitPrice } from "../lib/cart";
-import { menuProducts } from "../data/menuData";
 import type { CartItem, MenuProduct } from "../types";
 import CartLineItem from "./CartLineItem";
-
-function findProduct(productId: string): MenuProduct | undefined {
-  return menuProducts.find((p) => p.id === productId);
-}
+import { menuProducts } from "../data/menuData";
+import { isSupabaseConfigured } from "../../../lib/supabaseClient";
+import { useCustomerMenuQuery } from "../../../hooks/useCustomerRemoteData";
+import { mapCustomerMenuToUi } from "../lib/catalogFromRemote";
+import { storeKeyToTenantSlug } from "../lib/storePath";
+import { useCustomerStoreKeyFromPath } from "../hooks/useCustomerStoreKeyFromPath";
 
 function formatRp(amount: number): string {
   return `Rp ${amount.toLocaleString("id-ID")}`;
@@ -15,17 +16,31 @@ function formatRp(amount: number): string {
 
 export default function CartDrawer() {
   const navigate = useNavigate();
+  const storeKey = useCustomerStoreKeyFromPath();
+  const tenantSlugDb = storeKey ? storeKeyToTenantSlug(storeKey) : null;
+  const useRemote = isSupabaseConfigured() && Boolean(tenantSlugDb);
+  const menuQuery = useCustomerMenuQuery(tenantSlugDb);
+
   const { isOpen, items, close, clear } = useCartStore();
+
+  const catalogProducts = useMemo((): MenuProduct[] => {
+    if (!useRemote || !menuQuery.data) {
+      return menuProducts;
+    }
+    return mapCustomerMenuToUi(menuQuery.data).products;
+  }, [useRemote, menuQuery.data]);
 
   const itemsWithProducts = useMemo(() => {
     const list: Array<{ item: CartItem; product: MenuProduct }> = [];
     for (const item of items) {
-      const product = findProduct(item.productId);
+      const product =
+        catalogProducts.find((p) => p.id === item.productId) ??
+        menuProducts.find((p) => p.id === item.productId);
       if (!product) continue;
       list.push({ item, product });
     }
     return list;
-  }, [items]);
+  }, [items, catalogProducts]);
 
   const totalCount = useMemo(() => getCartCount(items), [items]);
   const totalPrice = useMemo(() => {
@@ -34,6 +49,8 @@ export default function CartDrawer() {
       return sum + unit * x.item.quantity;
     }, 0);
   }, [itemsWithProducts]);
+
+  const checkoutPath = storeKey ? `/${storeKey}/checkout` : "/checkout";
 
   return (
     <div
@@ -120,14 +137,14 @@ export default function CartDrawer() {
             </button>
             <button
               type="button"
-              disabled={itemsWithProducts.length === 0}
+              disabled={itemsWithProducts.length === 0 || !storeKey}
               onClick={() => {
                 close();
-                navigate("/checkout");
+                navigate(checkoutPath);
               }}
               className={[
                 "flex-1 rounded-full py-2.5 text-sm font-bold transition",
-                itemsWithProducts.length === 0
+                itemsWithProducts.length === 0 || !storeKey
                   ? "bg-red-200 text-red-700 cursor-not-allowed"
                   : "bg-red-600 text-white hover:bg-red-700",
               ].join(" ")}
@@ -137,7 +154,7 @@ export default function CartDrawer() {
           </div>
 
           <div className="mt-3 text-[11px] text-neutral-500">
-            Dummy checkout UI (no backend).
+            {useRemote ? "Checkout sends order to the outlet." : "Demo cart (no backend)."}
           </div>
         </div>
       </aside>

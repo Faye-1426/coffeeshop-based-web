@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { CategoryId, MenuProduct, MenuCategory } from "./types";
+import { useParams } from "react-router-dom";
+import type { MenuProduct, MenuCategory } from "./types";
 import HeroPromoCard from "./components/HeroPromoCard";
 import SearchAndFilters, {
   type ProductSort,
@@ -10,35 +11,15 @@ import CategoryTabs from "./components/CategoryTabs";
 import ProductGrid from "./components/ProductGrid";
 import ProductDetailModal from "./components/ProductDetailModal";
 import { menuCategories, menuProducts } from "./data/menuData";
-
-function getCategoryCounts(): Record<CategoryId, number> {
-  const counts: Record<CategoryId, number> = {
-    coffee: 0,
-    nonCoffee: 0,
-    snacks: 0,
-    meals: 0,
-  };
-
-  for (const p of menuProducts) {
-    counts[p.categoryId] += 1;
-  }
-  return counts;
-}
-
-function buildCategoryCache(
-  products: MenuProduct[],
-): Record<CategoryId, MenuProduct[]> {
-  const by: Record<CategoryId, MenuProduct[]> = {
-    coffee: [],
-    nonCoffee: [],
-    snacks: [],
-    meals: [],
-  };
-  for (const p of products) {
-    by[p.categoryId].push(p);
-  }
-  return by;
-}
+import { isSupabaseConfigured } from "../../lib/supabaseClient";
+import { useCustomerMenuQuery } from "../../hooks/useCustomerRemoteData";
+import { storeKeyToTenantSlug } from "./lib/storePath";
+import {
+  buildCategoryCounts,
+  buildCategoryProductCache,
+  mapCustomerMenuToUi,
+} from "./lib/catalogFromRemote";
+import { useCartStore } from "./lib/cart";
 
 function matchesSearch(p: MenuProduct, query: string): boolean {
   if (!query) return true;
@@ -90,41 +71,93 @@ function sortProducts(list: MenuProduct[], sortBy: ProductSort): MenuProduct[] {
 }
 
 export default function WarcoopMenuPage() {
-  const categories = menuCategories;
+  const { storeKey } = useParams<{ storeKey: string }>();
+  const tenantSlugDb = storeKey ? storeKeyToTenantSlug(storeKey) : null;
+  const useRemote = isSupabaseConfigured() && Boolean(tenantSlugDb);
+  const menuQuery = useCustomerMenuQuery(tenantSlugDb);
+  const setScopeStoreKey = useCartStore((s) => s.setScopeStoreKey);
 
-  const [selectedCategoryId, setSelectedCategoryId] =
-    useState<CategoryId>("coffee");
+  useEffect(() => {
+    if (storeKey) setScopeStoreKey(storeKey);
+  }, [storeKey, setScopeStoreKey]);
+
+  const { categories, menuProductsList, badgeOptions, fromRemote } =
+    useMemo(() => {
+      if (useRemote && menuQuery.data) {
+        const mapped = mapCustomerMenuToUi(menuQuery.data);
+        const badges = Array.from(
+          new Set(
+            mapped.products
+              .map((p) => p.badge)
+              .filter((b): b is string => Boolean(b)),
+          ),
+        ).sort();
+        return {
+          categories: mapped.categories,
+          menuProductsList: mapped.products,
+          badgeOptions: badges,
+          fromRemote: true,
+        };
+      }
+      return {
+        categories: menuCategories,
+        menuProductsList: menuProducts,
+        badgeOptions: undefined as string[] | undefined,
+        fromRemote: false,
+      };
+    }, [useRemote, menuQuery.data]);
+
+  const categoryProductCache = useMemo(
+    () => buildCategoryProductCache(menuProductsList),
+    [menuProductsList],
+  );
+
+  const categoryCounts = useMemo(
+    () => buildCategoryCounts(menuProductsList),
+    [menuProductsList],
+  );
+
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+
+  const activeCategoryId = useMemo(() => {
+    if (!categories.length) return "";
+    if (
+      selectedCategoryId &&
+      categories.some((c) => c.id === selectedCategoryId)
+    ) {
+      return selectedCategoryId;
+    }
+    return categories[0]!.id;
+  }, [categories, selectedCategoryId]);
+
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [demoDelayDone, setDemoDelayDone] = useState(false);
   const [detailProductId, setDetailProductId] = useState<string | null>(null);
-
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<ProductSort>("name_asc");
   const [badgeFilter, setBadgeFilter] = useState<BadgeFilter>("all");
   const [priceRange, setPriceRange] = useState<PriceRangeFilter>("all");
 
+  useEffect(() => {
+    if (useRemote) return;
+    const t = window.setTimeout(() => setDemoDelayDone(true), 350);
+    return () => window.clearTimeout(t);
+  }, [useRemote]);
+
+  const gridLoading = useRemote
+    ? menuQuery.isLoading
+    : !demoDelayDone;
+
   const detailProduct = useMemo(() => {
     if (!detailProductId) return null;
-    return menuProducts.find((p) => p.id === detailProductId) ?? null;
-  }, [detailProductId]);
-
-  const categoryCounts = useMemo(() => getCategoryCounts(), []);
-  const categoryProductCache = useMemo(
-    () => buildCategoryCache(menuProducts),
-    [],
-  );
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setIsInitialLoading(false), 350);
-    return () => window.clearTimeout(t);
-  }, []);
+    return menuProductsList.find((p) => p.id === detailProductId) ?? null;
+  }, [detailProductId, menuProductsList]);
 
   const afterSearch = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const inCategory = categoryProductCache[selectedCategoryId];
+    const inCategory = categoryProductCache[activeCategoryId] ?? [];
     return inCategory.filter((p) => matchesSearch(p, q));
-  }, [categoryProductCache, searchQuery, selectedCategoryId]);
+  }, [categoryProductCache, searchQuery, activeCategoryId]);
 
   const afterFilters = useMemo(() => {
     return afterSearch.filter(
@@ -138,7 +171,7 @@ export default function WarcoopMenuPage() {
   );
 
   const selectedCategory: MenuCategory | undefined = categories.find(
-    (c) => c.id === selectedCategoryId,
+    (c) => c.id === activeCategoryId,
   );
 
   const resetFilters = () => {
@@ -178,6 +211,30 @@ export default function WarcoopMenuPage() {
     selectedCategory?.name,
   ]);
 
+  if (!storeKey || !tenantSlugDb) {
+    return (
+      <main className="max-w-7xl mx-auto py-10">
+        <p className="text-center text-neutral-600 text-sm">
+          Invalid store URL. Expected{" "}
+          <code className="font-mono text-xs">/your-tenant-slug-store</code>.
+        </p>
+      </main>
+    );
+  }
+
+  if (useRemote && menuQuery.isError) {
+    return (
+      <main className="max-w-7xl mx-auto py-10">
+        <p className="text-center text-red-600 text-sm font-semibold">
+          Could not load menu.{" "}
+          {menuQuery.error instanceof Error
+            ? menuQuery.error.message
+            : "Check tenant slug and Supabase RPC."}
+        </p>
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-7xl mx-auto">
       <HeroPromoCard
@@ -196,18 +253,19 @@ export default function WarcoopMenuPage() {
         onBadgeFilter={setBadgeFilter}
         priceRange={priceRange}
         onPriceRange={setPriceRange}
+        badgeOptions={fromRemote ? badgeOptions : undefined}
       />
 
       <CategoryTabs
         categories={categories}
-        activeCategoryId={selectedCategoryId}
+        activeCategoryId={activeCategoryId}
         onSelect={setSelectedCategoryId}
         categoryCounts={categoryCounts}
       />
 
       <ProductGrid
         products={visibleProducts}
-        isLoading={isInitialLoading}
+        isLoading={gridLoading}
         onOpenDetail={(p) => setDetailProductId(p.id)}
         emptyState={emptyState}
       />

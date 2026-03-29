@@ -2,7 +2,7 @@
 
 ## Isi folder
 
-- `migrations/` — skema PostgreSQL, RLS, trigger, fungsi agregat super admin, seed roles (file gabungan: `migrations-v4-29032026.sql`).
+- `migrations/` — skema PostgreSQL, RLS, trigger, fungsi agregat super admin, seed roles (file gabungan: `migrations-v4-29032026.sql`), plus **customer marketplace** RPC (`20260328120000_customer_marketplace_rpc.sql`): `rpc_customer_menu`, `rpc_customer_create_order` (eksekusi untuk role `anon` + `authenticated`).
 - `seed.sql` — contoh SQL manual (tenant / assign profil); tidak dijalankan otomatis oleh migrasi.
 - `config.toml` — placeholder `project_id` untuk Supabase CLI (`supabase link`).
 

@@ -1,11 +1,10 @@
 import { ListFilter, Search } from "lucide-react";
-import type { Badge } from "../types";
 
 export type ProductSort = "name_asc" | "name_desc" | "price_asc" | "price_desc";
 export type PriceRangeFilter = "all" | "lt25" | "25to40" | "gt40";
-export type BadgeFilter = "all" | Badge;
+export type BadgeFilter = "all" | string;
 
-const BADGE_OPTIONS: BadgeFilter[] = [
+const DEFAULT_BADGE_OPTIONS: BadgeFilter[] = [
   "all",
   "Popular",
   "Best Seller",
@@ -25,6 +24,8 @@ type SearchAndFiltersProps = {
   onBadgeFilter: (v: BadgeFilter) => void;
   priceRange: PriceRangeFilter;
   onPriceRange: (v: PriceRangeFilter) => void;
+  /** When set (e.g. live catalog), badge filter options; otherwise demo defaults. */
+  badgeOptions?: string[];
 };
 
 export default function SearchAndFilters({
@@ -38,7 +39,13 @@ export default function SearchAndFilters({
   onBadgeFilter,
   priceRange,
   onPriceRange,
+  badgeOptions,
 }: SearchAndFiltersProps) {
+  const badgeSelectOptions: BadgeFilter[] =
+    badgeOptions && badgeOptions.length > 0
+      ? ["all", ...badgeOptions]
+      : DEFAULT_BADGE_OPTIONS;
+
   return (
     <div className="mt-4">
       <div className="flex gap-2 items-stretch">
@@ -112,7 +119,7 @@ export default function SearchAndFilters({
                   }
                   className="mt-1.5 w-full rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600/25"
                 >
-                  {BADGE_OPTIONS.map((b) => (
+                  {badgeSelectOptions.map((b) => (
                     <option key={b} value={b}>
                       {b === "all" ? "All" : b}
                     </option>
