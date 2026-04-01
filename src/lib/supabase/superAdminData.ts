@@ -9,6 +9,7 @@ export type SuperTenantRow = {
   plan_id: string | null;
   end_subscription: string | null;
   logo_url: string | null;
+  midtrans_configured: boolean;
 };
 
 export type SubscriptionPlanRow = {
@@ -72,7 +73,7 @@ export async function sbFetchOwnerTenant(): Promise<SuperTenantRow | null> {
   const { data, error } = await sb
     .from("tenants")
     .select(
-      "id, name, slug, sub_status, is_owner, plan_id, end_subscription, logo_url",
+      "id, name, slug, sub_status, is_owner, plan_id, end_subscription, logo_url, midtrans_configured",
     )
     .eq("is_owner", true)
     .maybeSingle();
@@ -88,7 +89,7 @@ export async function sbFetchTenantById(
   const { data, error } = await sb
     .from("tenants")
     .select(
-      "id, name, slug, sub_status, is_owner, plan_id, end_subscription, logo_url",
+      "id, name, slug, sub_status, is_owner, plan_id, end_subscription, logo_url, midtrans_configured",
     )
     .eq("id", id)
     .maybeSingle();
@@ -127,7 +128,7 @@ export async function sbInsertTenant(row: {
       plan_id: row.plan_id ?? null,
     })
     .select(
-      "id, name, slug, sub_status, is_owner, plan_id, end_subscription, logo_url",
+      "id, name, slug, sub_status, is_owner, plan_id, end_subscription, logo_url, midtrans_configured",
     )
     .single();
   if (error) throw error;
@@ -155,6 +156,19 @@ export async function sbDeleteTenant(id: string) {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
   const { error } = await sb.from("tenants").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function sbRpcSuperadminSetMidtransKey(
+  tenantId: string,
+  midtransKeyB64: string | null,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const { error } = await sb.rpc("rpc_superadmin_set_midtrans_key", {
+    p_tenant_id: tenantId,
+    p_midtrans_key_b64: midtransKeyB64 ?? "",
+  });
   if (error) throw error;
 }
 

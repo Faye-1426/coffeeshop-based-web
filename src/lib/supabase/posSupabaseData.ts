@@ -160,15 +160,28 @@ type OrderRow = {
   created_at: string;
   total_price: unknown;
   order_items: OrderItemRow[] | null;
+  pending_lines?: unknown;
 };
 
 function mapOrderRow(o: OrderRow): PosOrder {
-  const items: PosOrderLine[] = (o.order_items ?? []).map((li) => ({
+  let items: PosOrderLine[] = (o.order_items ?? []).map((li) => ({
     productId: li.product_id,
     name: li.line_item_name,
     qty: li.quantity,
     unitPrice: num(li.unit_price_at_sale),
   }));
+  if (
+    items.length === 0 &&
+    o.status === "awaiting_payment" &&
+    Array.isArray(o.pending_lines)
+  ) {
+    items = o.pending_lines.map((li: Record<string, unknown>) => ({
+      productId: String(li.product_id ?? ""),
+      name: String(li.line_item_name ?? ""),
+      qty: Number(li.quantity ?? 0),
+      unitPrice: num(li.unit_price_at_sale),
+    }));
+  }
   return {
     id: o.id,
     status: o.status,
@@ -193,6 +206,7 @@ export async function sbFetchOrders(): Promise<PosOrder[]> {
       customer_name,
       created_at,
       total_price,
+      pending_lines,
       order_items (
         product_id,
         line_item_name,

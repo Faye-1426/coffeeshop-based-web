@@ -1,13 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { KeyRound } from "lucide-react";
+import { CreditCard, KeyRound } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
+import { encodeMidtransKeyForStorage } from "../../lib/midtransKeyNormalize";
 import {
-  sbUpdateTenant,
   sbRpcCreateSubsKey,
+  sbRpcSuperadminSetMidtransKey,
+  sbUpdateTenant,
 } from "../../lib/supabase/superAdminData";
 import { superQueryKeys } from "../../lib/keys/superQueryKeys";
 import {
@@ -29,6 +36,8 @@ export default function DetailTenant() {
   const [logoUrl, setLogoUrl] = useState("");
   const [isOwner, setIsOwner] = useState(false);
   const [newKeyPlain, setNewKeyPlain] = useState<string | null>(null);
+  const [midtransB64, setMidtransB64] = useState("");
+  const [midtransRotate, setMidtransRotate] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -71,6 +80,46 @@ export default function DetailTenant() {
       await refreshTenantQueries();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Gagal menyimpan.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onSaveMidtrans = async () => {
+    if (!id || isOwner) return;
+    const trimmed = midtransB64.trim();
+    if (!trimmed) {
+      setErr(
+        "Tempel JSON Midtrans (serverKey + clientKey) atau Base64, atau hapus konfigurasi.",
+      );
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const blob = encodeMidtransKeyForStorage(midtransB64);
+      await sbRpcSuperadminSetMidtransKey(id, blob);
+      setMidtransB64("");
+      setMidtransRotate(false);
+      await refreshTenantQueries();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : "Gagal menyimpan Midtrans.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onClearMidtrans = async () => {
+    if (!id || isOwner) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await sbRpcSuperadminSetMidtransKey(id, null);
+      setMidtransB64("");
+      setMidtransRotate(false);
+      await refreshTenantQueries();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : "Gagal menghapus Midtrans.");
     } finally {
       setBusy(false);
     }
@@ -191,6 +240,99 @@ export default function DetailTenant() {
               {busy ? "Menyimpan…" : "Simpan perubahan"}
             </Button>
           </form>
+        </Card>
+      ) : null}
+
+      {t && !isOwner ? (
+        <Card className="p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <CreditCard className="h-5 w-5 text-red-600 shrink-0 mt-0.5" aria-hidden />
+            <div className="min-w-0 flex-1 space-y-3">
+              <h2 className="text-sm font-extrabold text-neutral-900">
+                Midtrans (customer QRIS)
+              </h2>
+              <p className="text-sm text-neutral-600">
+                Tempel JSON{" "}
+                <code className="rounded bg-neutral-100 px-1">
+                  &#123; &quot;serverKey&quot;, &quot;clientKey&quot; &#125;
+                </code>{" "}
+                dari dashboard Midtrans, atau Base64 yang sudah di-encode. Aplikasi
+                meng-encode JSON ke Base64 sebelum menyimpan. Nilai tidak pernah
+                ditampilkan lagi setelah tersimpan.
+              </p>
+              {(t.midtrans_configured ?? false) && !midtransRotate ? (
+                <div className="space-y-3">
+                  <p className="font-mono text-sm tracking-widest text-neutral-800">
+                    ••••••••
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setErr(null);
+                        setMidtransB64("");
+                        setMidtransRotate(true);
+                      }}
+                    >
+                      Ganti kunci
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => void onClearMidtrans()}
+                    >
+                      Hapus konfigurasi
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="block">
+                    <span className="text-xs font-bold text-neutral-600">
+                      Kredensial Midtrans
+                    </span>
+                    <textarea
+                      value={midtransB64}
+                      onChange={(e) => setMidtransB64(e.target.value)}
+                      autoComplete="off"
+                      rows={3}
+                      className="mt-1 w-full rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-mono outline-none focus:ring-2 focus:ring-red-600/25"
+                      style={
+                        { WebkitTextSecurity: "disc" } as CSSProperties
+                      }
+                      placeholder='{"serverKey":"...","clientKey":"..."} atau Base64'
+                    />
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void onSaveMidtrans()}
+                    >
+                      {busy ? "Menyimpan…" : "Simpan Midtrans"}
+                    </Button>
+                    {(t.midtrans_configured ?? false) ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          setMidtransRotate(false);
+                          setMidtransB64("");
+                          setErr(null);
+                        }}
+                      >
+                        Batal
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </Card>
       ) : null}
 

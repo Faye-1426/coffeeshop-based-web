@@ -5,6 +5,8 @@ function orderStatusTone(
   s: OrderStatus,
 ): "neutral" | "warning" | "success" | "danger" | "info" {
   switch (s) {
+    case "awaiting_payment":
+      return "info";
     case "pending":
       return "warning";
     case "preparing":

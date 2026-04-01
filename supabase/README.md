@@ -2,7 +2,8 @@
 
 ## Isi folder
 
-- `migrations/` — skema PostgreSQL, RLS, trigger, fungsi agregat super admin, seed roles (file gabungan: `migrations-v4-29032026.sql`), plus **customer marketplace** RPC (`20260328120000_customer_marketplace_rpc.sql`): `rpc_customer_menu`, `rpc_customer_create_order` (eksekusi untuk role `anon` + `authenticated`).
+- `migrations/` — skema PostgreSQL, RLS, trigger, fungsi agregat super admin, seed roles (`migrations-v4-29032026.sql`), **customer marketplace** (`20260328120000_customer_marketplace_rpc.sql`: `rpc_customer_menu`), dan **Midtrans QRIS** (`20260329120000_midtrans_qris_checkout.sql`): `rpc_customer_create_checkout`, `rpc_finalize_midtrans_payment` (**hanya `service_role`**), kunci tenant + RPC owner/superadmin.
+- `functions/midtrans-snap`, `functions/midtrans-webhook` — Edge Functions (deploy dengan CLI). Secret **`MIDTRANS_PRODUCTION`**=`true` memilih host `app.midtrans.com`; `false` atau tidak diset → sandbox. Pasangkan dengan **server/client key** tenant (sandbox vs production). URL webhook Midtrans mengarah ke `.../functions/v1/midtrans-webhook`.
 - `seed.sql` — contoh SQL manual (tenant / assign profil); tidak dijalankan otomatis oleh migrasi.
 - `config.toml` — placeholder `project_id` untuk Supabase CLI (`supabase link`).
 

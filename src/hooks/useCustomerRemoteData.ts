@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 import { customerQueryKeys } from "../lib/keys/customerQueryKeys";
 import {
-  sbCustomerCreateOrder,
+  sbCustomerCreateCheckout,
   sbCustomerFetchMenu,
   type CustomerCreateOrderLine,
+  type CustomerCheckoutResult,
   type CustomerMenuPayload,
 } from "../lib/supabase/customerPublicData";
 
@@ -19,7 +20,7 @@ export function useCustomerMenuQuery(tenantSlugDb: string | null) {
   });
 }
 
-export function useCustomerCreateOrderMutation() {
+export function useCustomerCreateCheckoutMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (args: {
@@ -28,8 +29,8 @@ export function useCustomerCreateOrderMutation() {
       customerEmail: string;
       tableNumber?: string;
       lines: CustomerCreateOrderLine[];
-    }) => sbCustomerCreateOrder(args),
-    onSuccess: (_orderId, variables) => {
+    }): Promise<CustomerCheckoutResult> => sbCustomerCreateCheckout(args),
+    onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({
         queryKey: customerQueryKeys.menu(variables.tenantSlugDb),
       });
@@ -37,4 +38,4 @@ export function useCustomerCreateOrderMutation() {
   });
 }
 
-export type { CustomerMenuPayload };
+export type { CustomerCheckoutResult, CustomerMenuPayload };

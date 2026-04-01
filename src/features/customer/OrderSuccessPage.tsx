@@ -5,15 +5,18 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 type LocationState = {
   orderId?: string;
   live?: boolean;
+  /** True: payment UI closed but fulfillment waits for Midtrans webhook. */
+  awaitingPayment?: boolean;
 };
 
 export default function OrderSuccessPage() {
   const { storeKey } = useParams<{ storeKey: string }>();
   const navigate = useNavigate();
   const { state } = useLocation();
-  const { orderId, live } = (state ?? {}) as LocationState;
+  const { orderId, live, awaitingPayment } = (state ?? {}) as LocationState;
 
   useEffect(() => {
+    if (awaitingPayment) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) return;
 
@@ -25,7 +28,7 @@ export default function OrderSuccessPage() {
       });
     }, 80);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [awaitingPayment]);
 
   const base = storeKey ? `/${storeKey}` : "/";
 
@@ -36,11 +39,13 @@ export default function OrderSuccessPage() {
           ✓
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900">
-          Order placed!
+          {awaitingPayment ? "Payment submitted" : "Order placed!"}
         </h1>
         <p className="mt-3 text-sm text-neutral-600">
           {live && orderId
-            ? `Thank you. Your order reference: ${orderId}`
+            ? awaitingPayment
+              ? `Thank you. We are confirming your QRIS payment with the bank. Order reference: ${orderId}. Kitchen preparation starts after confirmation is received.`
+              : `Thank you. Your order reference: ${orderId}`
             : "Thank you — demo mode (no order saved to the server)."}
         </p>
         <button
