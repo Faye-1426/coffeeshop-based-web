@@ -2,6 +2,7 @@ import type { OrderStatus } from "../../../types/pos";
 
 const FILTERS: readonly (OrderStatus | "all")[] = [
   "all",
+  "awaiting_payment",
   "pending",
   "preparing",
   "served",
