@@ -30,6 +30,8 @@ export type TenantRowBrief = {
   end_subscription: string | null;
   logo_url: string | null;
   plan_id: string | null;
+  /** True when outlet has saved Midtrans keys (no secret exposed). */
+  midtrans_configured: boolean;
 };
 
 export type SubsKeyBrief = {
@@ -112,7 +114,7 @@ async function loadProfileAndTenant(
     const { data: t, error: tErr } = await sb
       .from("tenants")
       .select(
-        "name, is_owner, id, slug, sub_status, end_subscription, logo_url, plan_id",
+        "name, is_owner, id, slug, sub_status, end_subscription, logo_url, plan_id, midtrans_configured",
       )
       .eq("id", profile.tenant_id)
       .maybeSingle();
@@ -128,6 +130,9 @@ async function loadProfileAndTenant(
         end_subscription: t.end_subscription ?? null,
         logo_url: t.logo_url ?? null,
         plan_id: t.plan_id ?? null,
+        midtrans_configured: Boolean(
+          (t as { midtrans_configured?: boolean }).midtrans_configured,
+        ),
       };
     }
     const { data: sk, error: skErr } = await sb

@@ -42,7 +42,11 @@ export default function OrderCard({
         <div className="text-right shrink-0">
           <div className="text-sm text-neutral-500">Total</div>
           <div className="text-xl font-extrabold">{formatIDR(o.total)}</div>
-          {o.status === "served" ? (
+          {o.status === "awaiting_payment" ? (
+            <p className="mt-3 text-xs font-semibold text-amber-800 max-w-[220px] sm:ml-auto">
+              Menunggu pembayaran QRIS pelanggan…
+            </p>
+          ) : o.status === "served" ? (
             <Button
               variant="secondary"
               className="mt-3 text-xs! w-full sm:w-auto"

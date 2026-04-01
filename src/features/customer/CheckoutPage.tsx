@@ -10,13 +10,18 @@ import {
   customerMenuPayloadToPriceMap,
   customerMenuPayloadToStockMap,
   sbCustomerFetchMenu,
+  sbInvokeMidtransSnap,
 } from "../../lib/supabase/customerPublicData";
 import { mapCustomerMenuToUi } from "./lib/catalogFromRemote";
 import { storeKeyToTenantSlug } from "./lib/storePath";
 import {
-  useCustomerCreateOrderMutation,
+  useCustomerCreateCheckoutMutation,
   useCustomerMenuQuery,
 } from "../../hooks/useCustomerRemoteData";
+import {
+  ensureMidtransSnapLoaded,
+  openMidtransSnapPay,
+} from "../../lib/midtransSnap";
 
 function findProductLocal(productId: string): MenuProduct | undefined {
   return menuProducts.find((p) => p.id === productId);
@@ -38,15 +43,15 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { items, clear } = useCartStore();
-  const createOrder = useCustomerCreateOrderMutation();
+  const createCheckout = useCustomerCreateCheckoutMutation();
   const menuQuery = useCustomerMenuQuery(tenantSlugDb);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [payment, setPayment] = useState<"cash" | "card">("cash");
   const [touched, setTouched] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [priceCheckPending, setPriceCheckPending] = useState(false);
+  const [payBusy, setPayBusy] = useState(false);
 
   const useRemote = isSupabaseConfigured() && Boolean(tenantSlugDb);
 
@@ -137,6 +142,17 @@ export default function CheckoutPage() {
     }
   }
 
+  function goSuccess(
+    orderId: string,
+    live: boolean,
+    awaitingPayment: boolean,
+  ) {
+    navigate(`/${storeKey}/order-success`, {
+      replace: true,
+      state: { orderId, live, awaitingPayment },
+    });
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between gap-3">
@@ -157,9 +173,15 @@ export default function CheckoutPage() {
         <h1 className="font-extrabold text-2xl text-neutral-900">Checkout</h1>
 
         <div className="mt-2 text-sm text-neutral-600">
-          {useRemote
-            ? "Order is sent to the outlet (pending). Prices are verified on submit."
-            : "Demo mode (no Supabase): order is not saved."}
+          {useRemote ? (
+            <>
+              Payment uses <strong>Midtrans QRIS</strong> only. Your order is
+              confirmed in the kitchen after the payment notification reaches
+              our server (not only from this screen).
+            </>
+          ) : (
+            "Demo mode (no Supabase): order is not saved."
+          )}
         </div>
 
         {validationError ? (
@@ -287,23 +309,6 @@ export default function CheckoutPage() {
                   </p>
                 ) : null}
               </label>
-
-              <label className="block sm:col-span-2">
-                <span className="text-sm font-extrabold text-neutral-900">
-                  Payment <span className="text-red-600">*</span>
-                </span>
-                <select
-                  required
-                  value={payment}
-                  onChange={(e) =>
-                    setPayment(e.target.value as "cash" | "card")
-                  }
-                  className="mt-2 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-600/25"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                </select>
-              </label>
             </div>
 
             <div className="mt-5 flex items-center justify-between gap-4">
@@ -313,7 +318,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="text-xs text-neutral-600">
                   {useRemote
-                    ? "Verified on place order"
+                    ? "Pay with QRIS via Midtrans"
                     : "Includes option deltas (demo)"}
                 </div>
               </div>
@@ -329,57 +334,89 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 disabled={
-                  !formValid || priceCheckPending || createOrder.isPending
+                  !formValid ||
+                  priceCheckPending ||
+                  createCheckout.isPending ||
+                  payBusy
                 }
-                onClick={async () => {
-                  setTouched(true);
-                  if (!formValid) return;
-                  const ok = await validateCartAgainstServer();
-                  if (!ok) return;
-                  if (useRemote && tenantSlugDb) {
-                    try {
-                      const lines = itemsWithProducts.map(
-                        ({ item, product }) => ({
-                          product_id: product.id,
-                          quantity: item.quantity,
-                          line_item_name: product.name,
-                        }),
-                      );
-                      const orderId = await createOrder.mutateAsync({
-                        tenantSlugDb,
-                        customerName: name.trim(),
-                        customerEmail: email.trim(),
-                        tableNumber: "Online",
-                        lines,
-                      });
+                onClick={() => {
+                  void (async () => {
+                    setTouched(true);
+                    if (!formValid) return;
+                    const ok = await validateCartAgainstServer();
+                    if (!ok) return;
+                    if (useRemote && tenantSlugDb) {
+                      try {
+                        setPayBusy(true);
+                        setValidationError(null);
+                        const lines = itemsWithProducts.map(
+                          ({ item, product }) => ({
+                            product_id: product.id,
+                            quantity: item.quantity,
+                            line_item_name: product.name,
+                          }),
+                        );
+                        const checkout = await createCheckout.mutateAsync({
+                          tenantSlugDb,
+                          customerName: name.trim(),
+                          customerEmail: email.trim(),
+                          tableNumber: "Online",
+                          lines,
+                        });
+                        const snap = await sbInvokeMidtransSnap({
+                          orderId: checkout.order_id,
+                          checkoutNonce: checkout.checkout_nonce,
+                        });
+                        await ensureMidtransSnapLoaded(
+                          snap.snap_js_url,
+                          snap.client_key,
+                        );
+                        openMidtransSnapPay(snap.token, {
+                          onSuccess: () => {
+                            clear();
+                            goSuccess(checkout.order_id, true, true);
+                          },
+                          onPending: () => {
+                            clear();
+                            goSuccess(checkout.order_id, true, true);
+                          },
+                          onError: () => {
+                            setValidationError(
+                              "Payment could not complete. You can try again from your cart.",
+                            );
+                          },
+                          onClose: () => {
+                            setPayBusy(false);
+                          },
+                        });
+                      } catch (e) {
+                        setValidationError(
+                          e instanceof Error
+                            ? e.message
+                            : "Checkout or payment start failed.",
+                        );
+                      } finally {
+                        setPayBusy(false);
+                      }
+                    } else {
                       clear();
-                      navigate(`/${storeKey}/order-success`, {
-                        replace: true,
-                        state: { orderId, live: true },
-                      });
-                    } catch (e) {
-                      setValidationError(
-                        e instanceof Error ? e.message : "Order failed",
-                      );
+                      goSuccess("demo", false, false);
                     }
-                  } else {
-                    clear();
-                    navigate(`/${storeKey}/order-success`, {
-                      replace: true,
-                      state: { orderId: "demo", live: false },
-                    });
-                  }
+                  })();
                 }}
                 className={[
                   "flex-1 rounded-full py-3 text-sm font-extrabold shadow transition",
-                  formValid && !priceCheckPending && !createOrder.isPending
+                  formValid &&
+                    !priceCheckPending &&
+                    !createCheckout.isPending &&
+                    !payBusy
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-red-200 text-red-800 cursor-not-allowed",
                 ].join(" ")}
               >
-                {priceCheckPending || createOrder.isPending
-                  ? "Placing…"
-                  : "Place order"}
+                {priceCheckPending || createCheckout.isPending || payBusy
+                  ? "Working…"
+                  : "Pay with QRIS"}
               </button>
               <button
                 type="button"
